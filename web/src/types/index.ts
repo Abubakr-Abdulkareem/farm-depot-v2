@@ -18,3 +18,12 @@ export type Product = {
   is_active: boolean;
   created_at: string;
 };
+
+
+
+
+export type FarmerPublic = {
+  id: string;
+  full_name: string | null;
+  business_name: string | null;
+};

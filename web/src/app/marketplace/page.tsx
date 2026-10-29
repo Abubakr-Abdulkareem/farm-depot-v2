@@ -1,7 +1,9 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import type { Product } from "@/types";
+import { formatNaira } from "@/lib/format";
+import type { Product, FarmerPublic } from "@/types";
 
 async function ProductList() {
   await connection();
@@ -23,24 +25,44 @@ async function ProductList() {
     return <p className="text-gray-400">No products listed yet.</p>;
   }
 
+  const farmerIds = [...new Set(products.map((p) => p.farmer_id))];
+  const { data: farmers } = await supabase
+    .from("farmer_public")
+    .select("*")
+    .in("id", farmerIds);
+
+  const farmerName = new Map(
+    ((farmers ?? []) as FarmerPublic[]).map((f) => [
+      f.id,
+      f.business_name || f.full_name || "Farmer",
+    ])
+  );
+
   return (
     <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {products.map((p) => (
-        <li key={p.id} className="rounded border border-gray-700 p-4">
-          <h2 className="text-lg font-semibold">{p.name}</h2>
-          {p.category && <p className="text-sm text-gray-400">{p.category}</p>}
-          <p className="mt-2 text-xl font-bold text-green-500">
-            ₦{Number(p.price_per_unit).toLocaleString("en-NG")}
-            <span className="text-sm font-normal text-gray-400"> / {p.unit}</span>
-          </p>
-          <p className="mt-1 text-sm">
-            {p.quantity_available} {p.unit} available
-          </p>
-          <p className="text-sm text-gray-400">
-            Min order: {p.min_order_quantity} {p.unit}
-          </p>
-          {p.location && <p className="text-sm text-gray-400">📍 {p.location}</p>}
-          {p.description && <p className="mt-2 text-sm">{p.description}</p>}
+        <li key={p.id}>
+          <Link
+            href={`/marketplace/${p.id}`}
+            className="block rounded border border-gray-700 p-4 hover:border-green-600"
+          >
+            <h2 className="text-lg font-semibold">{p.name}</h2>
+            {p.category && <p className="text-sm text-gray-400">{p.category}</p>}
+            <p className="mt-2 text-xl font-bold text-green-500">
+              {formatNaira(p.price_per_unit)}
+              <span className="text-sm font-normal text-gray-400"> / {p.unit}</span>
+            </p>
+            <p className="mt-1 text-sm">
+              {p.quantity_available} {p.unit} available
+            </p>
+            <p className="text-sm text-gray-400">
+              Min order: {p.min_order_quantity} {p.unit}
+            </p>
+            {p.location && <p className="text-sm text-gray-400">📍 {p.location}</p>}
+            <p className="mt-2 text-sm text-gray-400">
+              Sold by {farmerName.get(p.farmer_id) ?? "Farmer"}
+            </p>
+          </Link>
         </li>
       ))}
     </ul>

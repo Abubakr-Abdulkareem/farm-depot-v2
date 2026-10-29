@@ -5,6 +5,7 @@ import LogoutButton from "@/components/LogoutButton";
 import ProductForm from "@/components/ProductForm";
 import { deleteProduct } from "./actions";
 import type { Product } from "@/types";
+import FarmerOrders from "@/components/FarmerOrders";
 
 async function FarmerContent() {
   const { user, profile } = await requireRole(["farmer"]);
@@ -59,6 +60,9 @@ async function FarmerContent() {
           </ul>
         )}
       </section>
+            <Suspense fallback={<p>Loading orders...</p>}>
+        <FarmerOrders />
+      </Suspense>
     </div>
   );
 }
