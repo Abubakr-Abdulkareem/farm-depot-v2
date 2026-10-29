@@ -1,7 +1,26 @@
+import { Suspense } from "react";
+import { requireRole } from "@/lib/auth";
+import LogoutButton from "@/components/LogoutButton";
+
+async function AdminContent() {
+  const { profile } = await requireRole(["admin"]);
+  return (
+    <div className="mt-4 flex flex-col gap-4">
+      <p>Welcome, {profile.full_name}</p>
+      <div>
+        <LogoutButton />
+      </div>
+    </div>
+  );
+}
+
 export default function Page() {
   return (
     <main className="p-6">
-      <h1 className="text-2xl font-bold">admin</h1>
+      <h1 className="text-2xl font-bold">Admin panel</h1>
+      <Suspense fallback={<p>Loading...</p>}>
+        <AdminContent />
+      </Suspense>
     </main>
   );
 }
