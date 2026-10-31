@@ -17,3 +17,4 @@
 
 - Farmer order flow: paid, then confirmed, then delivered (enforced by the `farmer_update_order_status` database function)
 
+- Product images: uploaded from the browser to the `product-images` Supabase Storage bucket (public read, farmers write only to their own folder); the server validates the URL before saving it
