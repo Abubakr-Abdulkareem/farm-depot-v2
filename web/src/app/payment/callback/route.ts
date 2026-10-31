@@ -12,10 +12,13 @@ export async function GET(request: Request) {
 
   const result = await confirmPayment(reference);
 
+  const outcome = !result.ok
+    ? "failed"
+    : result.message === "duplicate"
+    ? "duplicate"
+    : "success";
+
   return NextResponse.redirect(
-    new URL(
-      `/dashboard/buyer?payment=${result.ok ? "success" : "failed"}`,
-      url
-    )
+    new URL(`/dashboard/buyer?payment=${outcome}`, url)
   );
 }

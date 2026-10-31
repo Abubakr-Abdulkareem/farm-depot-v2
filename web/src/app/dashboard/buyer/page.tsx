@@ -48,6 +48,12 @@ async function BuyerContent({
           Payment received. Thank you!
         </p>
       )}
+      {payment === "duplicate" && (
+        <p className="rounded border border-yellow-600 p-3 text-yellow-500">
+          This order was already paid, so this extra payment will need to be
+          refunded.
+        </p>
+      )}
       {(payment === "failed" || payment === "error") && (
         <p className="rounded border border-red-600 p-3 text-red-500">
           Payment was not completed. You can try again below.
@@ -69,7 +75,9 @@ async function BuyerContent({
             {orders.map((o) => (
               <li key={o.id} className="rounded border border-gray-700 p-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-400">{formatDate(o.created_at)}</p>
+                  <p className="text-sm text-gray-400">
+                    {formatDate(o.created_at)}
+                  </p>
                   <span className="rounded bg-gray-800 px-2 py-0.5 text-xs uppercase">
                     {o.status}
                   </span>

@@ -24,13 +24,13 @@ export async function payForOrder(formData: FormData) {
     redirect("/dashboard/buyer?payment=error");
   }
 
-  const reference = `fd_${randomUUID()}`;
+    const reference = `fd_${randomUUID()}`;
   const admin = createAdminClient();
-  const { error } = await admin
-    .from("orders")
-    .update({ payment_reference: reference })
-    .eq("id", order.id)
-    .eq("status", "pending");
+  const { error } = await admin.from("payments").insert({
+    order_id: order.id,
+    reference,
+    amount_kobo: Math.round(Number(order.total_amount) * 100),
+  });
 
   if (error) redirect("/dashboard/buyer?payment=error");
 

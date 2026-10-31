@@ -50,12 +50,12 @@ export async function confirmPayment(reference: string) {
     return { ok: false, message: "Payment was not successful" };
   }
 
-  const admin = createAdminClient();
-  const { error } = await admin.rpc("mark_order_paid", {
+    const admin = createAdminClient();
+  const { data, error } = await admin.rpc("mark_order_paid", {
     p_reference: reference,
     p_amount_kobo: tx.amount,
   });
   if (error) return { ok: false, message: error.message };
 
-  return { ok: true, message: "Paid" };
+  return { ok: true, message: String(data) };
 }
