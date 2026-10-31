@@ -62,3 +62,21 @@ export async function deleteProduct(formData: FormData) {
   revalidatePath("/dashboard/farmer");
   revalidatePath("/marketplace");
 }
+
+export async function updateOrderStatus(formData: FormData) {
+  await requireRole(["farmer"]);
+
+  const orderId = String(formData.get("order_id") ?? "");
+  const status = String(formData.get("status") ?? "");
+  if (!orderId || !["confirmed", "delivered"].includes(status)) return;
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("farmer_update_order_status", {
+    p_order_id: orderId,
+    p_new_status: status,
+  });
+  if (error) console.error("Order status update failed:", error.message);
+
+  revalidatePath("/dashboard/farmer");
+  revalidatePath("/dashboard/buyer");
+}

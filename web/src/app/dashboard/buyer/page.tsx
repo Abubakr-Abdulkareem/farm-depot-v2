@@ -18,6 +18,14 @@ type OrderRow = {
   }[];
 };
 
+const statusStyle: Record<string, string> = {
+  pending: "bg-gray-800 text-gray-300",
+  paid: "bg-yellow-900 text-yellow-300",
+  confirmed: "bg-blue-900 text-blue-300",
+  delivered: "bg-green-900 text-green-300",
+  cancelled: "bg-red-900 text-red-300",
+};
+
 async function BuyerContent({
   searchParams,
 }: {
@@ -78,7 +86,11 @@ async function BuyerContent({
                   <p className="text-sm text-gray-400">
                     {formatDate(o.created_at)}
                   </p>
-                  <span className="rounded bg-gray-800 px-2 py-0.5 text-xs uppercase">
+                  <span
+                    className={`rounded px-2 py-0.5 text-xs uppercase ${
+                      statusStyle[o.status] ?? "bg-gray-800"
+                    }`}
+                  >
                     {o.status}
                   </span>
                 </div>
