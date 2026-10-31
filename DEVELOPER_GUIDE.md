@@ -14,3 +14,6 @@
 - Webhook at /api/paystack/webhook is a backup (signature verified with HMAC-SHA512)
 - Orders are marked paid only by the `mark_order_paid` database function (server secret key only)
 - Env vars: PAYSTACK_SECRET_KEY, SUPABASE_SECRET_KEY, NEXT_PUBLIC_SITE_URL (server-side secrets, never NEXT_PUBLIC)
+
+- Farmer order flow: paid, then confirmed, then delivered (enforced by the `farmer_update_order_status` database function)
+
