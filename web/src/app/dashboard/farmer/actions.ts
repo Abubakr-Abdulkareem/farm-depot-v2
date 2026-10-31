@@ -16,6 +16,7 @@ export async function createProduct(
   const description = String(formData.get("description") ?? "").trim();
   const unit = String(formData.get("unit") ?? "kg").trim();
   const location = String(formData.get("location") ?? "").trim();
+  const imageUrl = String(formData.get("image_url") ?? "").trim();
   const price = Number(formData.get("price_per_unit"));
   const quantity = Number(formData.get("quantity_available"));
   const minOrder = Number(formData.get("min_order_quantity"));
@@ -30,6 +31,12 @@ export async function createProduct(
   if (minOrder > quantity)
     return { error: "Minimum order can't be more than the quantity available." };
 
+  // The image must live in THIS farmer's own folder in our storage bucket
+  const allowedPrefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${user.id}/`;
+  if (imageUrl && !imageUrl.startsWith(allowedPrefix)) {
+    return { error: "Invalid image. Please upload the photo again." };
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.from("products").insert({
     farmer_id: user.id,
@@ -41,6 +48,7 @@ export async function createProduct(
     quantity_available: quantity,
     min_order_quantity: minOrder,
     location: location || null,
+    image_url: imageUrl || null,
   });
 
   if (error) return { error: error.message };
@@ -57,7 +65,24 @@ export async function deleteProduct(formData: FormData) {
   if (!id) return;
 
   const supabase = await createClient();
-  await supabase.from("products").delete().eq("id", id);
+
+  const { data: product } = await supabase
+    .from("products")
+    .select("image_url")
+    .eq("id", id)
+    .maybeSingle();
+
+  const { error } = await supabase.from("products").delete().eq("id", id);
+
+  if (!error && product?.image_url) {
+    const marker = "/product-images/";
+    const idx = product.image_url.indexOf(marker);
+    if (idx !== -1) {
+      await supabase.storage
+        .from("product-images")
+        .remove([product.image_url.slice(idx + marker.length)]);
+    }
+  }
 
   revalidatePath("/dashboard/farmer");
   revalidatePath("/marketplace");

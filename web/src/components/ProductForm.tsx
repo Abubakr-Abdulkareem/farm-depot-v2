@@ -1,11 +1,15 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { createProduct } from "@/app/dashboard/farmer/actions";
+import { createClient } from "@/lib/supabase/client";
 import type { FormState } from "@/types";
 
 const initialState: FormState = {};
 const input = "rounded border border-gray-600 bg-transparent p-2 w-full";
+
+const MAX_BYTES = 5 * 1024 * 1024;
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export default function ProductForm() {
   const [state, formAction, pending] = useActionState(
@@ -13,10 +17,70 @@ export default function ProductForm() {
     initialState
   );
   const formRef = useRef<HTMLFormElement>(null);
+  const [imageUrl, setImageUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (state.success) formRef.current?.reset();
+    if (state.success) {
+      formRef.current?.reset();
+      setImageUrl("");
+    }
   }, [state]);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    setImageError(null);
+    if (!file) return;
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setImageError("Use a JPG, PNG or WebP image.");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      setImageError("Image is too large. Maximum size is 5 MB.");
+      e.target.value = "";
+      return;
+    }
+
+    setUploading(true);
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setImageError("Please log in again.");
+      setUploading(false);
+      return;
+    }
+
+    const ext =
+      file.type === "image/png"
+        ? "png"
+        : file.type === "image/webp"
+        ? "webp"
+        : "jpg";
+    const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from("product-images")
+      .upload(path, file, {
+        contentType: file.type,
+        cacheControl: "31536000",
+      });
+
+    if (error) {
+      setImageError(error.message);
+      setUploading(false);
+      return;
+    }
+
+    const { data } = supabase.storage.from("product-images").getPublicUrl(path);
+    setImageUrl(data.publicUrl);
+    setUploading(false);
+  }
 
   return (
     <form
@@ -59,15 +123,40 @@ export default function ProductForm() {
 
       <input name="location" placeholder="Location (e.g. Ogun State)" className={input} />
 
+      <div className="flex flex-col gap-2">
+        <label className="text-sm text-gray-400">
+          Product photo (optional, JPG/PNG/WebP, max 5 MB)
+        </label>
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={handleFile}
+          className="text-sm"
+        />
+        {uploading && <p className="text-sm text-gray-400">Uploading photo...</p>}
+        {imageError && <p className="text-sm text-red-500">{imageError}</p>}
+        {imageUrl && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imageUrl}
+              alt="Product preview"
+              className="h-40 w-40 rounded object-cover"
+            />
+          </>
+        )}
+        <input type="hidden" name="image_url" value={imageUrl} />
+      </div>
+
       {state.error && <p className="text-red-500">{state.error}</p>}
       {state.success && <p className="text-green-500">Product added.</p>}
 
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || uploading}
         className="rounded bg-green-600 p-2 font-semibold text-white disabled:opacity-50"
       >
-        {pending ? "Saving..." : "Add product"}
+        {pending ? "Saving..." : uploading ? "Uploading photo..." : "Add product"}
       </button>
     </form>
   );

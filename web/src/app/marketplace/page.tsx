@@ -44,24 +44,41 @@ async function ProductList() {
         <li key={p.id}>
           <Link
             href={`/marketplace/${p.id}`}
-            className="block rounded border border-gray-700 p-4 hover:border-green-600"
+            className="block overflow-hidden rounded border border-gray-700 hover:border-green-600"
           >
-            <h2 className="text-lg font-semibold">{p.name}</h2>
-            {p.category && <p className="text-sm text-gray-400">{p.category}</p>}
-            <p className="mt-2 text-xl font-bold text-green-500">
-              {formatNaira(p.price_per_unit)}
-              <span className="text-sm font-normal text-gray-400"> / {p.unit}</span>
-            </p>
-            <p className="mt-1 text-sm">
-              {p.quantity_available} {p.unit} available
-            </p>
-            <p className="text-sm text-gray-400">
-              Min order: {p.min_order_quantity} {p.unit}
-            </p>
-            {p.location && <p className="text-sm text-gray-400">📍 {p.location}</p>}
-            <p className="mt-2 text-sm text-gray-400">
-              Sold by {farmerName.get(p.farmer_id) ?? "Farmer"}
-            </p>
+            <div className="aspect-[4/3] w-full bg-gray-800">
+              {p.image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={p.image_url}
+                  alt={p.name}
+                  loading="lazy"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-gray-500">
+                  No photo
+                </div>
+              )}
+            </div>
+            <div className="p-4">
+              <h2 className="text-lg font-semibold">{p.name}</h2>
+              {p.category && <p className="text-sm text-gray-400">{p.category}</p>}
+              <p className="mt-2 text-xl font-bold text-green-500">
+                {formatNaira(p.price_per_unit)}
+                <span className="text-sm font-normal text-gray-400"> / {p.unit}</span>
+              </p>
+              <p className="mt-1 text-sm">
+                {p.quantity_available} {p.unit} available
+              </p>
+              <p className="text-sm text-gray-400">
+                Min order: {p.min_order_quantity} {p.unit}
+              </p>
+              {p.location && <p className="text-sm text-gray-400">📍 {p.location}</p>}
+              <p className="mt-2 text-sm text-gray-400">
+                Sold by {farmerName.get(p.farmer_id) ?? "Farmer"}
+              </p>
+            </div>
           </Link>
         </li>
       ))}
@@ -71,7 +88,7 @@ async function ProductList() {
 
 export default function Page() {
   return (
-    <main className="p-6">
+    <main className="mx-auto max-w-6xl p-6">
       <h1 className="mb-4 text-2xl font-bold">Marketplace</h1>
       <Suspense fallback={<p>Loading products...</p>}>
         <ProductList />

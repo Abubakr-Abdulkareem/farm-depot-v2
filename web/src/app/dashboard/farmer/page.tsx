@@ -3,9 +3,9 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import LogoutButton from "@/components/LogoutButton";
 import ProductForm from "@/components/ProductForm";
+import FarmerOrders from "@/components/FarmerOrders";
 import { deleteProduct } from "./actions";
 import type { Product } from "@/types";
-import FarmerOrders from "@/components/FarmerOrders";
 
 async function FarmerContent() {
   const { user, profile } = await requireRole(["farmer"]);
@@ -39,15 +39,29 @@ async function FarmerContent() {
             {products.map((p) => (
               <li
                 key={p.id}
-                className="flex items-center justify-between rounded border border-gray-700 p-3"
+                className="flex items-center justify-between gap-3 rounded border border-gray-700 p-3"
               >
-                <div>
-                  <p className="font-semibold">{p.name}</p>
-                  <p className="text-sm text-gray-400">
-                    ₦{Number(p.price_per_unit).toLocaleString("en-NG")} per {p.unit} ·{" "}
-                    {p.quantity_available} {p.unit} available · min order{" "}
-                    {p.min_order_quantity}
-                  </p>
+                <div className="flex items-center gap-3">
+                  {p.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={p.image_url}
+                      alt={p.name}
+                      className="h-16 w-16 rounded object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-16 w-16 items-center justify-center rounded bg-gray-800 text-xs text-gray-500">
+                      No photo
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-semibold">{p.name}</p>
+                    <p className="text-sm text-gray-400">
+                      ₦{Number(p.price_per_unit).toLocaleString("en-NG")} per {p.unit} ·{" "}
+                      {p.quantity_available} {p.unit} available · min order{" "}
+                      {p.min_order_quantity}
+                    </p>
+                  </div>
                 </div>
                 <form action={deleteProduct}>
                   <input type="hidden" name="id" value={p.id} />
@@ -60,7 +74,8 @@ async function FarmerContent() {
           </ul>
         )}
       </section>
-            <Suspense fallback={<p>Loading orders...</p>}>
+
+      <Suspense fallback={<p>Loading orders...</p>}>
         <FarmerOrders />
       </Suspense>
     </div>

@@ -33,6 +33,17 @@ async function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <div className="max-w-xl">
+      {p.image_url && (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={p.image_url}
+            alt={p.name}
+            className="mb-4 aspect-[4/3] w-full rounded object-cover"
+          />
+        </>
+      )}
+
       <h1 className="text-3xl font-bold">{p.name}</h1>
       {p.category && <p className="text-gray-400">{p.category}</p>}
 
