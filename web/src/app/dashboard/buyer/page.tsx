@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatNaira, formatDate } from "@/lib/format";
 import LogoutButton from "@/components/LogoutButton";
+import { payForOrder } from "./actions";
 
 type OrderRow = {
   id: string;
@@ -17,8 +18,13 @@ type OrderRow = {
   }[];
 };
 
-async function BuyerContent() {
+async function BuyerContent({
+  searchParams,
+}: {
+  searchParams: Promise<{ payment?: string }>;
+}) {
   const { profile } = await requireRole(["buyer"]);
+  const { payment } = await searchParams;
 
   const supabase = await createClient();
   const { data } = await supabase
@@ -36,6 +42,17 @@ async function BuyerContent() {
         <p>Welcome, {profile.full_name}</p>
         <LogoutButton />
       </div>
+
+      {payment === "success" && (
+        <p className="rounded border border-green-600 p-3 text-green-500">
+          Payment received. Thank you!
+        </p>
+      )}
+      {(payment === "failed" || payment === "error") && (
+        <p className="rounded border border-red-600 p-3 text-red-500">
+          Payment was not completed. You can try again below.
+        </p>
+      )}
 
       <Link href="/marketplace" className="text-green-500 underline">
         Browse the marketplace
@@ -66,6 +83,17 @@ async function BuyerContent() {
                 <p className="mt-2 font-bold text-green-500">
                   Total: {formatNaira(o.total_amount)}
                 </p>
+                {o.status === "pending" && (
+                  <form action={payForOrder} className="mt-3">
+                    <input type="hidden" name="order_id" value={o.id} />
+                    <button
+                      type="submit"
+                      className="rounded bg-green-600 px-4 py-2 font-semibold text-white"
+                    >
+                      Pay now
+                    </button>
+                  </form>
+                )}
               </li>
             ))}
           </ul>
@@ -75,12 +103,16 @@ async function BuyerContent() {
   );
 }
 
-export default function Page() {
+export default function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ payment?: string }>;
+}) {
   return (
     <main className="p-6">
       <h1 className="text-2xl font-bold">Buyer dashboard</h1>
       <Suspense fallback={<p>Loading...</p>}>
-        <BuyerContent />
+        <BuyerContent searchParams={searchParams} />
       </Suspense>
     </main>
   );
