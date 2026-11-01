@@ -14,16 +14,13 @@ export type Product = {
   quantity_available: number;
   min_order_quantity: number;
   location: string | null;
+  origin_state: string | null;
   image_url: string | null;
   is_active: boolean;
   created_at: string;
 };
 
-
-
-
-export type FarmerPublic = {
-  id: string;
-  full_name: string | null;
-  business_name: string | null;
+export type DeliveryRoute = {
+  state: string;
+  fee: number;
 };

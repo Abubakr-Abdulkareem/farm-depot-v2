@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import type { FormState } from "@/types";
 import { containsContactInfo } from "@/lib/contact-filter";
+import { isNigerianState } from "@/lib/states";
+import type { FormState } from "@/types";
 
 export async function createProduct(
   _prev: FormState,
@@ -17,6 +18,7 @@ export async function createProduct(
   const description = String(formData.get("description") ?? "").trim();
   const unit = String(formData.get("unit") ?? "kg").trim();
   const location = String(formData.get("location") ?? "").trim();
+  const originState = String(formData.get("origin_state") ?? "").trim();
   const imageUrl = String(formData.get("image_url") ?? "").trim();
   const price = Number(formData.get("price_per_unit"));
   const quantity = Number(formData.get("quantity_available"));
@@ -31,6 +33,9 @@ export async function createProduct(
     return { error: "Enter a valid minimum order." };
   if (minOrder > quantity)
     return { error: "Minimum order can't be more than the quantity available." };
+  if (!isNigerianState(originState))
+    return { error: "Choose the state where the produce is picked up." };
+
   if ([name, description, location, category].some(containsContactInfo)) {
     return {
       error:
@@ -55,6 +60,7 @@ export async function createProduct(
     quantity_available: quantity,
     min_order_quantity: minOrder,
     location: location || null,
+    origin_state: originState,
     image_url: imageUrl || null,
   });
 

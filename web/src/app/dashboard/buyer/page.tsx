@@ -10,6 +10,11 @@ type OrderRow = {
   id: string;
   status: string;
   total_amount: number;
+  items_total: number | null;
+  delivery_fee: number | null;
+  delivery_state: string | null;
+  delivery_address: string | null;
+  delivery_code: string | null;
   created_at: string;
   order_items: {
     quantity: number;
@@ -38,7 +43,7 @@ async function BuyerContent({
   const { data } = await supabase
     .from("orders")
     .select(
-      "id, status, total_amount, created_at, order_items(quantity, unit_price, products(name, unit))"
+      "id, status, total_amount, items_total, delivery_fee, delivery_state, delivery_address, delivery_code, created_at, order_items(quantity, unit_price, products(name, unit))"
     )
     .order("created_at", { ascending: false });
 
@@ -94,15 +99,53 @@ async function BuyerContent({
                     {o.status}
                   </span>
                 </div>
+
                 {o.order_items.map((item, i) => (
                   <p key={i} className="mt-1">
                     {item.products?.name ?? "Product"}: {item.quantity}{" "}
                     {item.products?.unit ?? ""} × {formatNaira(item.unit_price)}
                   </p>
                 ))}
-                <p className="mt-2 font-bold text-green-500">
+
+                {o.delivery_address && (
+                  <p className="mt-2 text-sm text-gray-400">
+                    Delivering to: {o.delivery_address}
+                    {o.delivery_state ? `, ${o.delivery_state}` : ""}
+                  </p>
+                )}
+
+                <div className="mt-2 text-sm">
+                  {o.items_total !== null && (
+                    <p className="flex justify-between">
+                      <span>Produce</span>
+                      <span>{formatNaira(o.items_total)}</span>
+                    </p>
+                  )}
+                  {o.delivery_fee !== null && Number(o.delivery_fee) > 0 && (
+                    <p className="flex justify-between">
+                      <span>Delivery</span>
+                      <span>{formatNaira(o.delivery_fee)}</span>
+                    </p>
+                  )}
+                </div>
+
+                <p className="mt-1 font-bold text-green-500">
                   Total: {formatNaira(o.total_amount)}
                 </p>
+
+                {(o.status === "paid" || o.status === "confirmed") &&
+                  o.delivery_code && (
+                    <p className="mt-3 rounded border border-yellow-700 p-2 text-sm text-yellow-300">
+                      Delivery code:{" "}
+                      <span className="font-mono text-lg font-bold">
+                        {o.delivery_code}
+                      </span>
+                      <br />
+                      Give this code to the driver only after you have received
+                      and checked your goods.
+                    </p>
+                  )}
+
                 {o.status === "pending" && (
                   <form action={payForOrder} className="mt-3">
                     <input type="hidden" name="order_id" value={o.id} />

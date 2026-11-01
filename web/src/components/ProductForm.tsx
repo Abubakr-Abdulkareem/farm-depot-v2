@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { createProduct } from "@/app/dashboard/farmer/actions";
 import { createClient } from "@/lib/supabase/client";
+import { NIGERIAN_STATES } from "@/lib/states";
 import type { FormState } from "@/types";
 
 const initialState: FormState = {};
@@ -12,21 +13,19 @@ const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export default function ProductForm() {
-  const [state, formAction, pending] = useActionState(
-    createProduct,
-    initialState
-  );
-  const formRef = useRef<HTMLFormElement>(null);
+    const formRef = useRef<HTMLFormElement>(null);
   const [imageUrl, setImageUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (state.success) {
-      formRef.current?.reset();
-      setImageUrl("");
-    }
-  }, [state]);
+  const [state, formAction, pending] = useActionState(
+    async (prev: FormState, formData: FormData) => {
+      const result = await createProduct(prev, formData);
+      if (result.success) setImageUrl("");
+      return result;
+    },
+    initialState
+  );
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -121,7 +120,22 @@ export default function ProductForm() {
         <input name="min_order_quantity" type="number" step="0.01" min="0" placeholder="Minimum order" className={input} required />
       </div>
 
-      <input name="location" placeholder="Location (e.g. Ogun State)" className={input} />
+      <select name="origin_state" className={input} defaultValue="" required>
+        <option value="" className="text-black">
+          State where the produce is picked up
+        </option>
+        {NIGERIAN_STATES.map((s) => (
+          <option key={s} value={s} className="text-black">
+            {s}
+          </option>
+        ))}
+      </select>
+
+      <input
+        name="location"
+        placeholder="Town or area (optional, no phone numbers)"
+        className={input}
+      />
 
       <div className="flex flex-col gap-2">
         <label className="text-sm text-gray-400">

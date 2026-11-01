@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { formatNaira } from "@/lib/format";
 import OrderForm from "@/components/OrderForm";
-import type { Product } from "@/types";
+import type { Product, DeliveryRoute } from "@/types";
 
 async function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
   await connection();
@@ -23,6 +23,22 @@ async function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
   const p = data as Product;
 
   const current = await getCurrentUser();
+
+  let routes: DeliveryRoute[] = [];
+  if (current?.role === "buyer" && p.origin_state) {
+    const { data: zones } = await supabase
+      .from("delivery_zones")
+      .select("destination_state, fee")
+      .eq("origin_state", p.origin_state)
+      .order("destination_state");
+
+    routes = (zones ?? []).map((z) => ({
+      state: z.destination_state as string,
+      fee: Number(z.fee),
+    }));
+  }
+
+  const place = [p.location, p.origin_state].filter(Boolean).join(", ");
 
   return (
     <div className="max-w-xl">
@@ -52,7 +68,7 @@ async function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
         <li>
           Minimum order: {p.min_order_quantity} {p.unit}
         </li>
-        {p.location && <li>📍 {p.location}</li>}
+        {place && <li>📍 {place}</li>}
         <li className="text-gray-400">
           Seller: Farmer #{p.farmer_id.slice(0, 4).toUpperCase()}
         </li>
@@ -78,6 +94,7 @@ async function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
           price={Number(p.price_per_unit)}
           min={Number(p.min_order_quantity)}
           max={Number(p.quantity_available)}
+          routes={routes}
         />
       ) : (
         <p className="mt-6 text-gray-400">Only buyer accounts can place orders.</p>

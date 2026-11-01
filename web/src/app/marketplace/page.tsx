@@ -78,7 +78,12 @@ async function ProductList({ filters }: { filters: Filters }) {
     query = query.eq("category", filters.category);
   }
   if (filters.location) {
-    query = query.ilike("location", `%${escapeLike(filters.location)}%`);
+    const term = filters.location.replace(/[^\p{L}\p{N}\s'-]/gu, "").trim();
+    if (term) {
+      query = query.or(
+        `origin_state.ilike.*${term}*,location.ilike.*${term}*`
+      );
+    }
   }
 
   if (filters.sort === "price_asc") {
@@ -161,8 +166,10 @@ async function ProductList({ filters }: { filters: Filters }) {
                 <p className="text-sm text-gray-400">
                   Min order: {p.min_order_quantity} {p.unit}
                 </p>
-                {p.location && (
-                  <p className="text-sm text-gray-400">📍 {p.location}</p>
+                  {(p.location || p.origin_state) && (
+                  <p className="text-sm text-gray-400">
+                    📍 {[p.location, p.origin_state].filter(Boolean).join(", ")}
+                  </p>
                 )}
                 <p className="mt-2 text-sm text-gray-400">
                   Seller: Farmer #{p.farmer_id.slice(0, 4).toUpperCase()}
