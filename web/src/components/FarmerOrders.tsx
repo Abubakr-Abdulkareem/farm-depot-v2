@@ -18,7 +18,17 @@ type FarmerOrderItem = {
 const statusStyle: Record<string, string> = {
   paid: "bg-yellow-900 text-yellow-300",
   confirmed: "bg-blue-900 text-blue-300",
+  picked_up: "bg-purple-900 text-purple-300",
   delivered: "bg-green-900 text-green-300",
+  completed: "bg-green-900 text-green-300",
+};
+
+const statusNote: Record<string, string> = {
+  paid: "Confirm that you can supply this order.",
+  confirmed: "Farm Depot will collect it from you. Keep it ready.",
+    picked_up: "Collected. Your payment is being processed.",
+  delivered: "Delivered. Thank you!",
+  completed: "Complete. Thank you!",
 };
 
 export default async function FarmerOrders() {
@@ -53,7 +63,7 @@ export default async function FarmerOrders() {
                     statusStyle[i.status] ?? "bg-gray-800"
                   }`}
                 >
-                  {i.status}
+                  {i.status.replace("_", " ")}
                 </span>
               </div>
               <p className="mt-1 font-semibold">
@@ -62,6 +72,11 @@ export default async function FarmerOrders() {
               <p className="mt-1 font-bold text-green-500">
                 {formatNaira(i.line_total)}
               </p>
+              {statusNote[i.status] && (
+                <p className="mt-1 text-sm text-gray-400">
+                  {statusNote[i.status]}
+                </p>
+              )}
 
               {i.status === "paid" && (
                 <form action={updateOrderStatus} className="mt-3">
@@ -69,15 +84,6 @@ export default async function FarmerOrders() {
                   <input type="hidden" name="status" value="confirmed" />
                   <button className="rounded bg-blue-600 px-4 py-2 font-semibold text-white">
                     Confirm order
-                  </button>
-                </form>
-              )}
-              {i.status === "confirmed" && (
-                <form action={updateOrderStatus} className="mt-3">
-                  <input type="hidden" name="order_id" value={i.order_id} />
-                  <input type="hidden" name="status" value="delivered" />
-                  <button className="rounded bg-green-600 px-4 py-2 font-semibold text-white">
-                    Mark as delivered
                   </button>
                 </form>
               )}

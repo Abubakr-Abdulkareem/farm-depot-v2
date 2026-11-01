@@ -106,7 +106,7 @@ export async function updateOrderStatus(formData: FormData) {
 
   const orderId = String(formData.get("order_id") ?? "");
   const status = String(formData.get("status") ?? "");
-  if (!orderId || !["confirmed", "delivered"].includes(status)) return;
+  if (!orderId || status !== "confirmed") return;
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("farmer_update_order_status", {
@@ -117,4 +117,39 @@ export async function updateOrderStatus(formData: FormData) {
 
   revalidatePath("/dashboard/farmer");
   revalidatePath("/dashboard/buyer");
+  revalidatePath("/admin");
+}
+
+export async function saveProfileDetails(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { user } = await requireRole(["farmer"]);
+
+  const phone = String(formData.get("phone") ?? "").trim();
+  const location = String(formData.get("location") ?? "").trim();
+  const businessName = String(formData.get("business_name") ?? "").trim();
+
+  if (!/^\+?[0-9][0-9 ]{7,16}$/.test(phone))
+    return { error: "Enter a valid phone number." };
+  if (location.length < 10 || location.length > 300)
+    return { error: "Enter your full pickup address (at least 10 characters)." };
+  if (businessName.length > 100)
+    return { error: "Business name is too long." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      phone,
+      location,
+      business_name: businessName || null,
+    })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/farmer");
+  revalidatePath("/admin");
+  return { success: true };
 }

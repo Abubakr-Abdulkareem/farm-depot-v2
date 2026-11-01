@@ -4,7 +4,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatNaira, formatDate } from "@/lib/format";
 import LogoutButton from "@/components/LogoutButton";
-import { payForOrder } from "./actions";
+import { payForOrder, confirmReceipt } from "./actions";
 
 type OrderRow = {
   id: string;
@@ -23,21 +23,25 @@ type OrderRow = {
   }[];
 };
 
+type Params = { payment?: string; receipt?: string };
+
 const statusStyle: Record<string, string> = {
   pending: "bg-gray-800 text-gray-300",
   paid: "bg-yellow-900 text-yellow-300",
   confirmed: "bg-blue-900 text-blue-300",
+  picked_up: "bg-purple-900 text-purple-300",
   delivered: "bg-green-900 text-green-300",
+  completed: "bg-green-900 text-green-300",
   cancelled: "bg-red-900 text-red-300",
 };
 
 async function BuyerContent({
   searchParams,
 }: {
-  searchParams: Promise<{ payment?: string }>;
+  searchParams: Promise<Params>;
 }) {
   const { profile } = await requireRole(["buyer"]);
-  const { payment } = await searchParams;
+  const { payment, receipt } = await searchParams;
 
   const supabase = await createClient();
   const { data } = await supabase
@@ -72,6 +76,16 @@ async function BuyerContent({
           Payment was not completed. You can try again below.
         </p>
       )}
+      {receipt === "done" && (
+        <p className="rounded border border-green-600 p-3 text-green-500">
+          Thanks for confirming. The order is complete.
+        </p>
+      )}
+      {receipt === "error" && (
+        <p className="rounded border border-red-600 p-3 text-red-500">
+          We couldn&apos;t complete that order. Please try again.
+        </p>
+      )}
 
       <Link href="/marketplace" className="text-green-500 underline">
         Browse the marketplace
@@ -96,7 +110,7 @@ async function BuyerContent({
                       statusStyle[o.status] ?? "bg-gray-800"
                     }`}
                   >
-                    {o.status}
+                    {o.status.replace("_", " ")}
                   </span>
                 </div>
 
@@ -133,7 +147,7 @@ async function BuyerContent({
                   Total: {formatNaira(o.total_amount)}
                 </p>
 
-                {(o.status === "paid" || o.status === "confirmed") &&
+                {o.status === "picked_up" &&
                   o.delivery_code && (
                     <p className="mt-3 rounded border border-yellow-700 p-2 text-sm text-yellow-300">
                       Delivery code:{" "}
@@ -157,6 +171,22 @@ async function BuyerContent({
                     </button>
                   </form>
                 )}
+
+                {o.status === "delivered" && (
+                  <div className="mt-3 rounded border border-green-700 p-3 text-sm">
+                    <p>
+                      Your goods were delivered. If everything is as expected,
+                      confirm receipt to complete the order. If something is
+                      wrong, don&apos;t confirm and contact Farm Depot.
+                    </p>
+                    <form action={confirmReceipt} className="mt-2">
+                      <input type="hidden" name="order_id" value={o.id} />
+                      <button className="rounded bg-green-600 px-4 py-2 font-semibold text-white">
+                        I received my goods
+                      </button>
+                    </form>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -169,7 +199,7 @@ async function BuyerContent({
 export default function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ payment?: string }>;
+  searchParams: Promise<Params>;
 }) {
   return (
     <main className="p-6">

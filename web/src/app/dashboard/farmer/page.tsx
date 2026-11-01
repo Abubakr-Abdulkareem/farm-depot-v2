@@ -3,7 +3,9 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import LogoutButton from "@/components/LogoutButton";
 import ProductForm from "@/components/ProductForm";
+import PickupDetailsForm from "@/components/PickupDetailsForm";
 import FarmerOrders from "@/components/FarmerOrders";
+import FarmerPayouts from "@/components/FarmerPayouts";
 import { deleteProduct } from "./actions";
 import type { Product } from "@/types";
 
@@ -11,13 +13,21 @@ async function FarmerContent() {
   const { user, profile } = await requireRole(["farmer"]);
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("products")
-    .select("*")
-    .eq("farmer_id", user.id)
-    .order("created_at", { ascending: false });
+  const [{ data }, { data: details }] = await Promise.all([
+    supabase
+      .from("products")
+      .select("*")
+      .eq("farmer_id", user.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("profiles")
+      .select("phone, location, business_name")
+      .eq("id", user.id)
+      .maybeSingle(),
+  ]);
 
   const products = (data ?? []) as Product[];
+  const hasPickupDetails = Boolean(details?.phone && details?.location);
 
   return (
     <div className="mt-4 flex flex-col gap-8">
@@ -25,6 +35,18 @@ async function FarmerContent() {
         <p>Welcome, {profile.full_name}</p>
         <LogoutButton />
       </div>
+
+      {!hasPickupDetails && (
+        <p className="rounded border border-yellow-600 p-3 text-yellow-500">
+          Add your pickup details below so our driver can collect your orders.
+        </p>
+      )}
+
+      <PickupDetailsForm
+        phone={details?.phone ?? ""}
+        location={details?.location ?? ""}
+        businessName={details?.business_name ?? ""}
+      />
 
       <ProductForm />
 
@@ -77,6 +99,10 @@ async function FarmerContent() {
 
       <Suspense fallback={<p>Loading orders...</p>}>
         <FarmerOrders />
+      </Suspense>
+
+      <Suspense fallback={<p>Loading payments...</p>}>
+        <FarmerPayouts />
       </Suspense>
     </div>
   );

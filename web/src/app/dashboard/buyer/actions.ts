@@ -2,6 +2,7 @@
 
 import { randomUUID } from "crypto";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -24,7 +25,7 @@ export async function payForOrder(formData: FormData) {
     redirect("/dashboard/buyer?payment=error");
   }
 
-    const reference = `fd_${randomUUID()}`;
+  const reference = `fd_${randomUUID()}`;
   const admin = createAdminClient();
   const { error } = await admin.from("payments").insert({
     order_id: order.id,
@@ -48,4 +49,22 @@ export async function payForOrder(formData: FormData) {
   }
 
   redirect(checkoutUrl);
+}
+
+export async function confirmReceipt(formData: FormData) {
+  await requireRole(["buyer"]);
+  const orderId = String(formData.get("order_id") ?? "");
+  if (!orderId) redirect("/dashboard/buyer");
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("complete_order", {
+    p_order_id: orderId,
+  });
+
+  revalidatePath("/dashboard/buyer");
+  revalidatePath("/dashboard/farmer");
+  revalidatePath("/admin");
+
+  if (error) redirect("/dashboard/buyer?receipt=error");
+  redirect("/dashboard/buyer?receipt=done");
 }
