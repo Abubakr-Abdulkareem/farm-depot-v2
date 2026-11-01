@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { formatNaira } from "@/lib/format";
 import OrderForm from "@/components/OrderForm";
-import type { Product, FarmerPublic } from "@/types";
+import type { Product } from "@/types";
 
 async function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
   await connection();
@@ -22,13 +22,6 @@ async function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
   if (error || !data) notFound();
   const p = data as Product;
 
-  const { data: farmer } = await supabase
-    .from("farmer_public")
-    .select("*")
-    .eq("id", p.farmer_id)
-    .maybeSingle();
-  const farmerInfo = farmer as FarmerPublic | null;
-
   const current = await getCurrentUser();
 
   return (
@@ -39,7 +32,7 @@ async function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
           <img
             src={p.image_url}
             alt={p.name}
-            className="mb-4 aspect-[4/3] w-full rounded object-cover"
+            className="mb-4 aspect-4/3 w-full rounded object-cover"
           />
         </>
       )}
@@ -61,7 +54,7 @@ async function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
         </li>
         {p.location && <li>📍 {p.location}</li>}
         <li className="text-gray-400">
-          Sold by {farmerInfo?.business_name || farmerInfo?.full_name || "Farmer"}
+          Seller: Farmer #{p.farmer_id.slice(0, 4).toUpperCase()}
         </li>
       </ul>
 
@@ -96,7 +89,10 @@ async function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
 export default function Page({ params }: { params: Promise<{ id: string }> }) {
   return (
     <main className="p-6">
-      <Link href="/marketplace" className="mb-4 inline-block text-sm text-gray-400 underline">
+      <Link
+        href="/marketplace"
+        className="mb-4 inline-block text-sm text-gray-400 underline"
+      >
         ← Back to marketplace
       </Link>
       <Suspense fallback={<p>Loading...</p>}>

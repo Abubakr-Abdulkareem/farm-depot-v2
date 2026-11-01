@@ -6,14 +6,13 @@ import { updateOrderStatus } from "@/app/dashboard/farmer/actions";
 type FarmerOrderItem = {
   id: string;
   order_id: string;
+  order_code: string;
   status: string;
   created_at: string;
   quantity: number;
   unit: string;
   line_total: number;
   product_name: string;
-  buyer_name: string | null;
-  buyer_business: string | null;
 };
 
 const statusStyle: Record<string, string> = {
@@ -46,7 +45,9 @@ export default async function FarmerOrders() {
           {items.map((i) => (
             <li key={i.id} className="rounded border border-gray-700 p-3">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-400">{formatDate(i.created_at)}</p>
+                <p className="text-sm text-gray-400">
+                  Order #{i.order_code} · {formatDate(i.created_at)}
+                </p>
                 <span
                   className={`rounded px-2 py-0.5 text-xs uppercase ${
                     statusStyle[i.status] ?? "bg-gray-800"
@@ -57,9 +58,6 @@ export default async function FarmerOrders() {
               </div>
               <p className="mt-1 font-semibold">
                 {i.product_name}: {i.quantity} {i.unit}
-              </p>
-              <p className="text-sm text-gray-400">
-                Buyer: {i.buyer_business || i.buyer_name || "Buyer"}
               </p>
               <p className="mt-1 font-bold text-green-500">
                 {formatNaira(i.line_total)}

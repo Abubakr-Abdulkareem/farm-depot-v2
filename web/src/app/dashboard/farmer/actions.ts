@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { FormState } from "@/types";
+import { containsContactInfo } from "@/lib/contact-filter";
 
 export async function createProduct(
   _prev: FormState,
@@ -30,6 +31,12 @@ export async function createProduct(
     return { error: "Enter a valid minimum order." };
   if (minOrder > quantity)
     return { error: "Minimum order can't be more than the quantity available." };
+  if ([name, description, location, category].some(containsContactInfo)) {
+    return {
+      error:
+        "Please remove phone numbers, emails and links. Buyers and farmers are connected through Farm Depot.",
+    };
+  }
 
   // The image must live in THIS farmer's own folder in our storage bucket
   const allowedPrefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${user.id}/`;

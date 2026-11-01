@@ -3,7 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { formatNaira } from "@/lib/format";
-import type { Product, FarmerPublic } from "@/types";
+import type { Product } from "@/types";
 
 const CATEGORIES = [
   "Grains",
@@ -115,19 +115,6 @@ async function ProductList({ filters }: { filters: Filters }) {
     return <p className="text-gray-400">No products match your search.</p>;
   }
 
-  const farmerIds = [...new Set(products.map((p) => p.farmer_id))];
-  const { data: farmers } = await supabase
-    .from("farmer_public")
-    .select("*")
-    .in("id", farmerIds);
-
-  const farmerName = new Map(
-    ((farmers ?? []) as FarmerPublic[]).map((f) => [
-      f.id,
-      f.business_name || f.full_name || "Farmer",
-    ])
-  );
-
   return (
     <div>
       <p className="mb-3 text-sm text-gray-400">
@@ -141,7 +128,7 @@ async function ProductList({ filters }: { filters: Filters }) {
               href={`/marketplace/${p.id}`}
               className="block overflow-hidden rounded border border-gray-700 hover:border-green-600"
             >
-              <div className="aspect-[4/3] w-full bg-gray-800">
+              <div className="aspect-4/3 w-full bg-gray-800">
                 {p.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -178,7 +165,7 @@ async function ProductList({ filters }: { filters: Filters }) {
                   <p className="text-sm text-gray-400">📍 {p.location}</p>
                 )}
                 <p className="mt-2 text-sm text-gray-400">
-                  Sold by {farmerName.get(p.farmer_id) ?? "Farmer"}
+                  Seller: Farmer #{p.farmer_id.slice(0, 4).toUpperCase()}
                 </p>
               </div>
             </Link>
@@ -264,7 +251,11 @@ async function MarketplaceContent({
         />
         <select name="sort" defaultValue={filters.sort} className={field}>
           {Object.entries(SORTS).map(([value, label]) => (
-            <option key={value} value={value === "newest" ? "" : value} className="text-black">
+            <option
+              key={value}
+              value={value === "newest" ? "" : value}
+              className="text-black"
+            >
               {label}
             </option>
           ))}
