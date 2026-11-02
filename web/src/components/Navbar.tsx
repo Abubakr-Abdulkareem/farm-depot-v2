@@ -25,6 +25,11 @@ export default async function Navbar() {
           {current ? (
             <>
               {dashboard && <Link href={dashboard}>Dashboard</Link>}
+              {current.role === "admin" ? (
+                <Link href="/admin/support">Support inbox</Link>
+              ) : (
+                <Link href="/support">Support</Link>
+              )}
               <LogoutButton />
             </>
           ) : (
