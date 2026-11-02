@@ -39,6 +39,7 @@ export async function createProduct(
     return { error: "Choose the state where the produce is picked up." };
   if (!isPerishability(perishability))
     return { error: "Choose how fast this produce spoils." };
+
   if ([name, description, location, category].some(containsContactInfo)) {
     return {
       error:

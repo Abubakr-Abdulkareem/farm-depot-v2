@@ -150,7 +150,7 @@ async function ProductList({ filters }: { filters: Filters }) {
               </div>
               <div className="p-4">
                 <h2 className="text-lg font-semibold">{p.name}</h2>
-                                {p.category && (
+                {p.category && (
                   <p className="text-sm text-gray-400">{p.category}</p>
                 )}
                 {p.perishability === "high" && (
@@ -171,7 +171,7 @@ async function ProductList({ filters }: { filters: Filters }) {
                 <p className="text-sm text-gray-400">
                   Min order: {p.min_order_quantity} {p.unit}
                 </p>
-                  {(p.location || p.origin_state) && (
+                {(p.location || p.origin_state) && (
                   <p className="text-sm text-gray-400">
                     📍 {[p.location, p.origin_state].filter(Boolean).join(", ")}
                   </p>
