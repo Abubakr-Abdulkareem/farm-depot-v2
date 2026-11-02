@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { containsContactInfo } from "@/lib/contact-filter";
 import { isNigerianState } from "@/lib/states";
+import { isPerishability } from "@/lib/perishability";
 import type { FormState } from "@/types";
 
 export async function createProduct(
@@ -19,6 +20,7 @@ export async function createProduct(
   const unit = String(formData.get("unit") ?? "kg").trim();
   const location = String(formData.get("location") ?? "").trim();
   const originState = String(formData.get("origin_state") ?? "").trim();
+  const perishability = String(formData.get("perishability") ?? "").trim();
   const imageUrl = String(formData.get("image_url") ?? "").trim();
   const price = Number(formData.get("price_per_unit"));
   const quantity = Number(formData.get("quantity_available"));
@@ -35,7 +37,8 @@ export async function createProduct(
     return { error: "Minimum order can't be more than the quantity available." };
   if (!isNigerianState(originState))
     return { error: "Choose the state where the produce is picked up." };
-
+  if (!isPerishability(perishability))
+    return { error: "Choose how fast this produce spoils." };
   if ([name, description, location, category].some(containsContactInfo)) {
     return {
       error:
@@ -61,6 +64,7 @@ export async function createProduct(
     min_order_quantity: minOrder,
     location: location || null,
     origin_state: originState,
+    perishability,
     image_url: imageUrl || null,
   });
 

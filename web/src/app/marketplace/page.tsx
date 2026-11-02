@@ -150,8 +150,13 @@ async function ProductList({ filters }: { filters: Filters }) {
               </div>
               <div className="p-4">
                 <h2 className="text-lg font-semibold">{p.name}</h2>
-                {p.category && (
+                                {p.category && (
                   <p className="text-sm text-gray-400">{p.category}</p>
+                )}
+                {p.perishability === "high" && (
+                  <p className="mt-1 inline-block rounded bg-red-900 px-2 py-0.5 text-xs text-red-300">
+                    Fresh · short-distance delivery only
+                  </p>
                 )}
                 <p className="mt-2 text-xl font-bold text-green-500">
                   {formatNaira(p.price_per_unit)}

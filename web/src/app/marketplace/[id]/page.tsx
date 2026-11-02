@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { formatNaira } from "@/lib/format";
+import { PERISHABILITY } from "@/lib/perishability";
 import OrderForm from "@/components/OrderForm";
 import type { Product, DeliveryRoute } from "@/types";
 
@@ -26,19 +27,31 @@ async function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
 
   let routes: DeliveryRoute[] = [];
   if (current?.role === "buyer" && p.origin_state) {
-    const { data: zones } = await supabase
-      .from("delivery_zones")
-      .select("destination_state, fee")
-      .eq("origin_state", p.origin_state)
-      .order("destination_state");
+    const [{ data: zones }, { data: rule }] = await Promise.all([
+      supabase
+        .from("delivery_zones")
+        .select("destination_state, fee, transit_hours")
+        .eq("origin_state", p.origin_state)
+        .order("destination_state"),
+      supabase
+        .from("perishability_rules")
+        .select("max_transit_hours")
+        .eq("level", p.perishability)
+        .maybeSingle(),
+    ]);
+
+    const maxHours = rule ? Number(rule.max_transit_hours) : null;
 
     routes = (zones ?? []).map((z) => ({
       state: z.destination_state as string,
       fee: Number(z.fee),
+      transitHours: Number(z.transit_hours),
+      allowed: maxHours === null || Number(z.transit_hours) <= maxHours,
     }));
   }
 
   const place = [p.location, p.origin_state].filter(Boolean).join(", ");
+  const level = PERISHABILITY[p.perishability] ?? PERISHABILITY.medium;
 
   return (
     <div className="max-w-xl">
@@ -73,6 +86,17 @@ async function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
           Seller: Farmer #{p.farmer_id.slice(0, 4).toUpperCase()}
         </li>
       </ul>
+
+      <div
+        className={`mt-4 rounded border p-3 text-sm ${
+          p.perishability === "high"
+            ? "border-red-700 text-red-300"
+            : "border-gray-700 text-gray-300"
+        }`}
+      >
+        <p className="font-semibold">{level.label}</p>
+        <p>{level.note}</p>
+      </div>
 
       {p.description && <p className="mt-4">{p.description}</p>}
 

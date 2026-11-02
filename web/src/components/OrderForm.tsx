@@ -28,14 +28,24 @@ export default function OrderForm({
   const [deliveryState, setDeliveryState] = useState("");
 
   const itemsTotal = Number(qty) > 0 ? Number(qty) * price : 0;
-  const fee = routes.find((r) => r.state === deliveryState)?.fee ?? 0;
-  const total = itemsTotal + (deliveryState ? fee : 0);
+  const selected = routes.find((r) => r.state === deliveryState);
+  const fee = selected?.fee ?? 0;
+  const total = itemsTotal + (selected ? fee : 0);
 
   if (routes.length === 0) {
     return (
       <p className="mt-6 text-gray-400">
         Delivery from this seller&apos;s state isn&apos;t available yet. Please
         check back soon.
+      </p>
+    );
+  }
+
+  if (!routes.some((r) => r.allowed)) {
+    return (
+      <p className="mt-6 text-gray-400">
+        This produce spoils quickly, and none of our delivery routes from the
+        pickup point are short enough yet. Please check back soon.
       </p>
     );
   }
@@ -71,8 +81,16 @@ export default function OrderForm({
           Choose a state
         </option>
         {routes.map((r) => (
-          <option key={r.state} value={r.state} className="text-black">
-            {r.state}
+          <option
+            key={r.state}
+            value={r.state}
+            disabled={!r.allowed}
+            className="text-black"
+          >
+            {r.state}{" "}
+            {r.allowed
+              ? `(about ${r.transitHours}h)`
+              : "(too far for this produce)"}
           </option>
         ))}
       </select>
@@ -102,7 +120,7 @@ export default function OrderForm({
         </p>
         <p className="flex justify-between">
           <span>Delivery</span>
-          <span>{deliveryState ? formatNaira(fee) : "Choose a state"}</span>
+          <span>{selected ? formatNaira(fee) : "Choose a state"}</span>
         </p>
         <p className="mt-1 flex justify-between border-t border-gray-700 pt-1 text-base font-bold text-green-500">
           <span>Total</span>

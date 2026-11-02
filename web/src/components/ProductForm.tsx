@@ -13,7 +13,7 @@ const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export default function ProductForm() {
-    const formRef = useRef<HTMLFormElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const [imageUrl, setImageUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
@@ -101,6 +101,24 @@ export default function ProductForm() {
         <option value="Poultry" className="text-black">Poultry</option>
         <option value="Other" className="text-black">Other</option>
       </select>
+
+      <select name="perishability" className={input} defaultValue="" required>
+        <option value="" className="text-black">
+          How fast does it spoil?
+        </option>
+        <option value="low" className="text-black">
+          Long-lasting (yam, dry grains, beans)
+        </option>
+        <option value="medium" className="text-black">
+          Lasts a day or two (onions, peppers, most fruits)
+        </option>
+        <option value="high" className="text-black">
+          Spoils fast (tomatoes, leafy vegetables, fresh fish, eggs)
+        </option>
+      </select>
+      <p className="-mt-2 text-xs text-gray-400">
+        Fast-spoiling produce can only be delivered on short routes.
+      </p>
 
       <textarea name="description" placeholder="Description (quality, harvest date, etc.)" className={input} rows={3} />
 

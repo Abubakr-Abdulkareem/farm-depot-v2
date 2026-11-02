@@ -1,3 +1,5 @@
+import type { Perishability } from "@/lib/perishability";
+
 export type FormState = {
   error?: string;
   success?: boolean;
@@ -15,6 +17,7 @@ export type Product = {
   min_order_quantity: number;
   location: string | null;
   origin_state: string | null;
+  perishability: Perishability;
   image_url: string | null;
   is_active: boolean;
   created_at: string;
@@ -23,4 +26,6 @@ export type Product = {
 export type DeliveryRoute = {
   state: string;
   fee: number;
+  transitHours: number;
+  allowed: boolean;
 };
