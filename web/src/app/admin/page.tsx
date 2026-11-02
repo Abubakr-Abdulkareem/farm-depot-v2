@@ -2,12 +2,16 @@ import { Suspense } from "react";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatNaira, formatDate } from "@/lib/format";
+import { DISPUTE_REASONS, isDisputeReason } from "@/lib/disputes";
 import LogoutButton from "@/components/LogoutButton";
 import {
   markPickedUp,
   markDelivered,
   completeOrder,
   markPayoutPaid,
+  resolveDispute,
+  markRefundPaid,
+  settleDebt,
 } from "./actions";
 
 type OrderItem = {
@@ -54,6 +58,36 @@ type Payout = {
   status: string;
   reference: string | null;
   paid_at: string | null;
+  created_at: string;
+};
+
+type Dispute = {
+  id: string;
+  order_id: string;
+  buyer_id: string;
+  reason: string;
+  details: string;
+  photo_paths: string[] | null;
+  status: string;
+  created_at: string;
+};
+
+type Refund = {
+  id: string;
+  order_id: string;
+  amount: number;
+  status: string;
+  reference: string | null;
+  paid_at: string | null;
+  created_at: string;
+};
+
+type Debt = {
+  id: string;
+  farmer_id: string;
+  dispute_id: string;
+  amount: number;
+  status: string;
   created_at: string;
 };
 
@@ -170,13 +204,20 @@ async function AdminContent({
 
   const supabase = await createClient();
 
-  const [ordersRes, payoutsRes, financialsRes] = await Promise.all([
+  const [
+    ordersRes,
+    payoutsRes,
+    financialsRes,
+    disputesRes,
+    refundsRes,
+    debtsRes,
+  ] = await Promise.all([
     supabase
       .from("orders")
       .select(
         "id, status, total_amount, items_total, delivery_fee, delivery_state, delivery_address, delivery_phone, created_at, delivered_at, buyer_id, order_items(quantity, unit_price, products(name, unit, farmer_id, origin_state, location))"
       )
-      .in("status", ["paid", "confirmed", "picked_up", "delivered"])
+      .in("status", ["paid", "confirmed", "picked_up", "delivered", "disputed"])
       .order("created_at", { ascending: true }),
     supabase
       .from("payouts")
@@ -184,15 +225,36 @@ async function AdminContent({
       .order("created_at", { ascending: false })
       .limit(60),
     supabase.from("order_financials").select("commission_amount"),
+    supabase
+      .from("disputes")
+      .select("*")
+      .eq("status", "open")
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("refunds")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(60),
+    supabase
+      .from("farmer_debts")
+      .select("*")
+      .eq("status", "open")
+      .order("created_at", { ascending: true }),
   ]);
 
   const orders = (ordersRes.data ?? []) as unknown as AdminOrder[];
   const payouts = (payoutsRes.data ?? []) as Payout[];
+  const openDisputes = (disputesRes.data ?? []) as Dispute[];
+  const refunds = (refundsRes.data ?? []) as Refund[];
+  const debts = (debtsRes.data ?? []) as Debt[];
   const commissionTotal = (financialsRes.data ?? []).reduce(
     (sum, f) => sum + Number(f.commission_amount),
     0
   );
 
+  const orderById = new Map(orders.map((o) => [o.id, o]));
+
+  // People (buyers, farmers)
   const ids = new Set<string>();
   orders.forEach((o) => {
     ids.add(o.buyer_id);
@@ -201,6 +263,8 @@ async function AdminContent({
     });
   });
   payouts.forEach((p) => ids.add(p.farmer_id));
+  debts.forEach((d) => ids.add(d.farmer_id));
+  openDisputes.forEach((d) => ids.add(d.buyer_id));
 
   let peopleList: Person[] = [];
   if (ids.size > 0) {
@@ -212,10 +276,51 @@ async function AdminContent({
   }
   const people = new Map(peopleList.map((p) => [p.id, p]));
 
+  // Paystack references for disputed and refunded orders
+  const refOrderIds = [
+    ...new Set([
+      ...openDisputes.map((d) => d.order_id),
+      ...refunds.map((r) => r.order_id),
+    ]),
+  ];
+  const paymentRef = new Map<string, string>();
+  if (refOrderIds.length > 0) {
+    const { data } = await supabase
+      .from("payments")
+      .select("order_id, reference")
+      .eq("status", "success")
+      .in("order_id", refOrderIds);
+    (data ?? []).forEach((p) =>
+      paymentRef.set(p.order_id as string, p.reference as string)
+    );
+  }
+
+  // Signed links for dispute photos (private bucket)
+  const photoUrls = new Map<string, string>();
+  const allPaths = openDisputes.flatMap((d) => d.photo_paths ?? []);
+  if (allPaths.length > 0) {
+    const { data: signed } = await supabase.storage
+      .from("dispute-evidence")
+      .createSignedUrls(allPaths, 3600);
+    (signed ?? []).forEach((s) => {
+      if (s.path && s.signedUrl) photoUrls.set(s.path, s.signedUrl);
+    });
+  }
+
   const byStatus = (s: string) => orders.filter((o) => o.status === s);
   const pendingPayouts = payouts.filter((p) => p.status === "pending");
   const paidPayouts = payouts.filter((p) => p.status === "paid").slice(0, 10);
+  const pendingRefunds = refunds.filter((r) => r.status === "pending");
   const pendingTotal = pendingPayouts.reduce((s, p) => s + Number(p.amount), 0);
+  const refundTotal = pendingRefunds.reduce((s, r) => s + Number(r.amount), 0);
+
+  const debtByFarmer = new Map<string, number>();
+  debts.forEach((d) =>
+    debtByFarmer.set(
+      d.farmer_id,
+      (debtByFarmer.get(d.farmer_id) ?? 0) + Number(d.amount)
+    )
+  );
 
   return (
     <div className="mt-4 flex flex-col gap-8">
@@ -230,7 +335,7 @@ async function AdminContent({
         </p>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded border border-gray-700 p-3">
           <p className="text-sm text-gray-400">Farmer payouts to make</p>
           <p className="text-2xl font-bold text-yellow-400">
@@ -238,8 +343,14 @@ async function AdminContent({
           </p>
         </div>
         <div className="rounded border border-gray-700 p-3">
-          <p className="text-sm text-gray-400">Orders in progress</p>
-          <p className="text-2xl font-bold">{orders.length}</p>
+          <p className="text-sm text-gray-400">Refunds to make</p>
+          <p className="text-2xl font-bold text-red-400">
+            {formatNaira(refundTotal)}
+          </p>
+        </div>
+        <div className="rounded border border-gray-700 p-3">
+          <p className="text-sm text-gray-400">Open disputes</p>
+          <p className="text-2xl font-bold">{openDisputes.length}</p>
         </div>
         <div className="rounded border border-gray-700 p-3">
           <p className="text-sm text-gray-400">Commission recorded</p>
@@ -248,6 +359,203 @@ async function AdminContent({
           </p>
         </div>
       </div>
+
+      <Section
+        title="Open disputes"
+        count={openDisputes.length}
+        empty="No open disputes."
+      >
+        {openDisputes.map((d) => {
+          const o = orderById.get(d.order_id);
+          if (!o) return null;
+          const reason = isDisputeReason(d.reason)
+            ? DISPUTE_REASONS[d.reason]
+            : d.reason;
+          return (
+            <OrderCard key={d.id} o={o} people={people}>
+              <div className="mt-3 rounded border border-red-800 p-3">
+                <p className="font-semibold text-red-300">
+                  Buyer&apos;s report: {reason}
+                </p>
+                <p className="mt-1 whitespace-pre-wrap">{d.details}</p>
+                <p className="mt-1 text-xs text-gray-400">
+                  Reported {dateTime(d.created_at)} · Paystack reference:{" "}
+                  {paymentRef.get(d.order_id) ?? "not found"}
+                </p>
+
+                {(d.photo_paths ?? []).length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {(d.photo_paths ?? []).map((path) => {
+                      const url = photoUrls.get(path);
+                      return url ? (
+                        <a
+                          key={path}
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={url}
+                            alt="Evidence"
+                            className="h-24 w-24 rounded object-cover"
+                          />
+                        </a>
+                      ) : (
+                        <span key={path} className="text-xs text-gray-500">
+                          Photo unavailable
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <form action={resolveDispute} className="mt-3 flex flex-col gap-2">
+                  <input type="hidden" name="dispute_id" value={d.id} />
+
+                  <div className="flex flex-wrap gap-2">
+                    <select
+                      name="resolution"
+                      defaultValue=""
+                      className={input}
+                      required
+                    >
+                      <option value="" className="text-black">
+                        Decision
+                      </option>
+                      <option value="full_refund" className="text-black">
+                        Full refund
+                      </option>
+                      <option value="partial_refund" className="text-black">
+                        Partial refund
+                      </option>
+                      <option value="rejected" className="text-black">
+                        Reject (no refund)
+                      </option>
+                    </select>
+
+                    <input
+                      name="refund_amount"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="Partial refund (₦)"
+                      className={`${input} w-44`}
+                    />
+
+                    <select
+                      name="fault"
+                      defaultValue=""
+                      className={input}
+                      required
+                    >
+                      <option value="" className="text-black">
+                        Whose fault?
+                      </option>
+                      <option value="farmer" className="text-black">
+                        Farmer (bad at pickup)
+                      </option>
+                      <option value="platform" className="text-black">
+                        Farm Depot (driver or transit)
+                      </option>
+                      <option value="buyer" className="text-black">
+                        Buyer
+                      </option>
+                      <option value="none" className="text-black">
+                        No one
+                      </option>
+                    </select>
+                  </div>
+
+                  <textarea
+                    name="note"
+                    rows={2}
+                    placeholder="Your note (only you see this)"
+                    className={`${input} w-full`}
+                  />
+
+                  <button className={`${button} w-fit bg-red-600`}>
+                    Resolve dispute
+                  </button>
+                  <p className="text-xs text-gray-400">
+                    Farmer fault creates a debt for the refund amount (up to what
+                    they were paid). Farm Depot fault means the farmer keeps
+                    their money and you absorb the cost.
+                  </p>
+                </form>
+              </div>
+            </OrderCard>
+          );
+        })}
+      </Section>
+
+      <Section
+        title="Refunds to make"
+        count={pendingRefunds.length}
+        empty="No pending refunds."
+      >
+        {pendingRefunds.map((r) => (
+          <li key={r.id} className="rounded border border-gray-700 p-3 text-sm">
+            <div className="flex items-center justify-between">
+              <p className="font-semibold">Order #{codeOf(r.order_id)}</p>
+              <p className="text-lg font-bold text-red-400">
+                {formatNaira(r.amount)}
+              </p>
+            </div>
+            <p className="text-gray-400">
+              Paystack reference: {paymentRef.get(r.order_id) ?? "not found"}
+            </p>
+            <p className="text-xs text-gray-400">
+              Find this payment in your Paystack dashboard, refund the amount
+              there, then record the refund reference or a note here.
+            </p>
+            <form action={markRefundPaid} className="mt-2 flex flex-wrap items-center gap-2">
+              <input type="hidden" name="refund_id" value={r.id} />
+              <input
+                name="reference"
+                placeholder="Refund reference or note"
+                minLength={3}
+                className={`${input} w-64`}
+                required
+              />
+              <button className={`${button} bg-green-600`}>Mark as refunded</button>
+            </form>
+          </li>
+        ))}
+      </Section>
+
+      <Section
+        title="Farmer debts"
+        count={debts.length}
+        empty="No open farmer debts."
+      >
+        {debts.map((d) => (
+          <li key={d.id} className="rounded border border-gray-700 p-3 text-sm">
+            <div className="flex items-center justify-between">
+              <p className="font-semibold">
+                {personName(people.get(d.farmer_id))} · Phone:{" "}
+                {people.get(d.farmer_id)?.phone ?? "not added yet"}
+              </p>
+              <p className="text-lg font-bold text-yellow-400">
+                {formatNaira(d.amount)}
+              </p>
+            </div>
+            <p className="text-xs text-gray-400">
+              Deduct this from the farmer&apos;s next payout, or collect it, then
+              mark it settled.
+            </p>
+            <form action={settleDebt} className="mt-2 flex flex-wrap items-center gap-2">
+              <input type="hidden" name="debt_id" value={d.id} />
+              <input
+                name="note"
+                placeholder="How it was settled (optional)"
+                className={`${input} w-64`}
+              />
+              <button className={`${button} bg-green-600`}>Mark as settled</button>
+            </form>
+          </li>
+        ))}
+      </Section>
 
       <Section
         title="Ready for pickup"
@@ -276,7 +584,10 @@ async function AdminContent({
       >
         {byStatus("picked_up").map((o) => (
           <OrderCard key={o.id} o={o} people={people}>
-            <form action={markDelivered} className="mt-3 flex flex-wrap items-center gap-2">
+            <form
+              action={markDelivered}
+              className="mt-3 flex flex-wrap items-center gap-2"
+            >
               <input type="hidden" name="order_id" value={o.id} />
               <input
                 name="code"
@@ -308,8 +619,8 @@ async function AdminContent({
             <p className="mt-2 text-gray-400">
               Delivered:{" "}
               {o.delivered_at ? dateTime(o.delivered_at) : "unknown time"}.
-              Complete it once the buyer confirms, or after about 48 hours with
-              no complaint.
+              Complete it once the buyer confirms, or after the 48-hour
+              complaint window with no report.
             </p>
             <form action={completeOrder} className="mt-2">
               <input type="hidden" name="order_id" value={o.id} />
@@ -338,12 +649,13 @@ async function AdminContent({
       >
         {pendingPayouts.map((p) => {
           const farmer = people.get(p.farmer_id);
+          const owed = debtByFarmer.get(p.farmer_id) ?? 0;
           return (
             <li key={p.id} className="rounded border border-gray-700 p-3 text-sm">
               <div className="flex items-center justify-between">
                 <p className="font-semibold">
-                  {p.kind === "pickup" ? "Pickup payment" : "Final payment"}{" "}
-                  · Order #{codeOf(p.order_id)}
+                  {p.kind === "pickup" ? "Pickup payment" : "Final payment"} ·
+                  Order #{codeOf(p.order_id)}
                 </p>
                 <p className="text-lg font-bold text-yellow-400">
                   {formatNaira(p.amount)}
@@ -352,11 +664,20 @@ async function AdminContent({
               <p className="mt-1">
                 Pay: {personName(farmer)} · Phone: {farmer?.phone ?? "not added yet"}
               </p>
+              {owed > 0 && (
+                <p className="mt-1 rounded border border-yellow-700 p-2 text-yellow-300">
+                  This farmer has {formatNaira(owed)} in open debts. Consider
+                  deducting it from this payout.
+                </p>
+              )}
               <p className="text-xs text-gray-400">
                 Get the farmer&apos;s bank details by phone, pay by transfer, then
                 record the reference here.
               </p>
-              <form action={markPayoutPaid} className="mt-2 flex flex-wrap items-center gap-2">
+              <form
+                action={markPayoutPaid}
+                className="mt-2 flex flex-wrap items-center gap-2"
+              >
                 <input type="hidden" name="payout_id" value={p.id} />
                 <input
                   name="reference"

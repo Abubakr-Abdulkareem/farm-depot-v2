@@ -21,14 +21,18 @@ const statusStyle: Record<string, string> = {
   picked_up: "bg-purple-900 text-purple-300",
   delivered: "bg-green-900 text-green-300",
   completed: "bg-green-900 text-green-300",
+  disputed: "bg-red-900 text-red-300",
+  refunded: "bg-gray-700 text-gray-200",
 };
 
 const statusNote: Record<string, string> = {
   paid: "Confirm that you can supply this order.",
   confirmed: "Farm Depot will collect it from you. Keep it ready.",
-    picked_up: "Collected. Your payment is being processed.",
+  picked_up: "Collected. Your payment is being processed.",
   delivered: "Delivered. Thank you!",
   completed: "Complete. Thank you!",
+  disputed: "The buyer reported a problem. Farm Depot is reviewing it.",
+  refunded: "This order was refunded to the buyer.",
 };
 
 export default async function FarmerOrders() {

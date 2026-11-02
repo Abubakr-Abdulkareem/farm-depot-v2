@@ -13,6 +13,10 @@ function finish(error?: { message: string } | null): never {
   redirect("/admin");
 }
 
+function fail(message: string): never {
+  redirect(`/admin?error=${encodeURIComponent(message)}`);
+}
+
 export async function markPickedUp(formData: FormData) {
   await requireRole(["admin"]);
   const orderId = String(formData.get("order_id") ?? "");
@@ -30,9 +34,7 @@ export async function markDelivered(formData: FormData) {
   const orderId = String(formData.get("order_id") ?? "");
   const code = String(formData.get("code") ?? "").trim();
   if (!orderId) redirect("/admin");
-  if (!/^\d{4}$/.test(code)) {
-    redirect(`/admin?error=${encodeURIComponent("Enter the 4-digit delivery code.")}`);
-  }
+  if (!/^\d{4}$/.test(code)) fail("Enter the 4-digit delivery code.");
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("admin_mark_delivered", {
@@ -64,6 +66,59 @@ export async function markPayoutPaid(formData: FormData) {
   const { error } = await supabase.rpc("admin_mark_payout_paid", {
     p_payout_id: payoutId,
     p_reference: reference,
+  });
+  finish(error);
+}
+
+export async function resolveDispute(formData: FormData) {
+  await requireRole(["admin"]);
+  const disputeId = String(formData.get("dispute_id") ?? "");
+  const resolution = String(formData.get("resolution") ?? "");
+  const fault = String(formData.get("fault") ?? "");
+  const note = String(formData.get("note") ?? "").trim();
+  const refundRaw = String(formData.get("refund_amount") ?? "").trim();
+  if (!disputeId) redirect("/admin");
+
+  const refund = refundRaw === "" ? null : Number(refundRaw);
+  if (refund !== null && !Number.isFinite(refund)) {
+    fail("Enter a valid refund amount.");
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_resolve_dispute", {
+    p_dispute_id: disputeId,
+    p_resolution: resolution,
+    p_refund_amount: refund,
+    p_fault: fault,
+    p_note: note,
+  });
+  finish(error);
+}
+
+export async function markRefundPaid(formData: FormData) {
+  await requireRole(["admin"]);
+  const refundId = String(formData.get("refund_id") ?? "");
+  const reference = String(formData.get("reference") ?? "").trim();
+  if (!refundId) redirect("/admin");
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_mark_refund_paid", {
+    p_refund_id: refundId,
+    p_reference: reference,
+  });
+  finish(error);
+}
+
+export async function settleDebt(formData: FormData) {
+  await requireRole(["admin"]);
+  const debtId = String(formData.get("debt_id") ?? "");
+  const note = String(formData.get("note") ?? "").trim();
+  if (!debtId) redirect("/admin");
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_settle_debt", {
+    p_debt_id: debtId,
+    p_note: note,
   });
   finish(error);
 }

@@ -7,6 +7,8 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { initializeTransaction } from "@/lib/paystack";
+import { isDisputeReason } from "@/lib/disputes";
+import type { FormState } from "@/types";
 
 export async function payForOrder(formData: FormData) {
   const { user } = await requireRole(["buyer"]);
@@ -67,4 +69,51 @@ export async function confirmReceipt(formData: FormData) {
 
   if (error) redirect("/dashboard/buyer?receipt=error");
   redirect("/dashboard/buyer?receipt=done");
+}
+
+export async function openDispute(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { user } = await requireRole(["buyer"]);
+
+  const orderId = String(formData.get("order_id") ?? "");
+  const reason = String(formData.get("reason") ?? "");
+  const details = String(formData.get("details") ?? "").trim();
+  const rawPaths = String(formData.get("photo_paths") ?? "[]");
+
+  if (!orderId) return { error: "Missing order." };
+  if (!isDisputeReason(reason)) return { error: "Choose what went wrong." };
+  if (details.length < 10 || details.length > 1000)
+    return { error: "Describe the problem in 10 to 1000 characters." };
+
+  let photoPaths: string[] = [];
+  try {
+    const parsed: unknown = JSON.parse(rawPaths);
+    if (Array.isArray(parsed)) {
+      photoPaths = parsed
+        .filter((p): p is string => typeof p === "string")
+        .slice(0, 3);
+    }
+  } catch {
+    photoPaths = [];
+  }
+  if (photoPaths.some((p) => !p.startsWith(`${user.id}/`))) {
+    return { error: "Invalid photo. Please upload it again." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("open_dispute", {
+    p_order_id: orderId,
+    p_reason: reason,
+    p_details: details,
+    p_photo_paths: photoPaths,
+  });
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/buyer");
+  revalidatePath("/dashboard/farmer");
+  revalidatePath("/admin");
+  redirect("/dashboard/buyer?dispute=opened");
 }

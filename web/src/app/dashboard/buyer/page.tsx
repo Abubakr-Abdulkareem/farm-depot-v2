@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatNaira, formatDate } from "@/lib/format";
 import LogoutButton from "@/components/LogoutButton";
+import DisputeForm from "@/components/DisputeForm";
 import { payForOrder, confirmReceipt } from "./actions";
 
 type OrderRow = {
@@ -23,7 +24,14 @@ type OrderRow = {
   }[];
 };
 
-type Params = { payment?: string; receipt?: string };
+type DisputeRow = {
+  order_id: string;
+  status: string;
+  resolution: string | null;
+  refund_amount: number;
+};
+
+type Params = { payment?: string; receipt?: string; dispute?: string };
 
 const statusStyle: Record<string, string> = {
   pending: "bg-gray-800 text-gray-300",
@@ -32,8 +40,27 @@ const statusStyle: Record<string, string> = {
   picked_up: "bg-purple-900 text-purple-300",
   delivered: "bg-green-900 text-green-300",
   completed: "bg-green-900 text-green-300",
+  disputed: "bg-red-900 text-red-300",
+  refunded: "bg-gray-700 text-gray-200",
   cancelled: "bg-red-900 text-red-300",
 };
+
+function disputeOutcome(d: DisputeRow) {
+  if (d.status === "open") {
+    return "Problem reported. Farm Depot is reviewing it and will be in touch.";
+  }
+  if (d.resolution === "full_refund") {
+    return `Your report was approved. We will refund ${formatNaira(
+      d.refund_amount
+    )} to your original payment method.`;
+  }
+  if (d.resolution === "partial_refund") {
+    return `Your report was partly approved. We will refund ${formatNaira(
+      d.refund_amount
+    )} to your original payment method.`;
+  }
+  return "We reviewed your report and found no grounds for a refund. The order is closed.";
+}
 
 async function BuyerContent({
   searchParams,
@@ -41,17 +68,25 @@ async function BuyerContent({
   searchParams: Promise<Params>;
 }) {
   const { profile } = await requireRole(["buyer"]);
-  const { payment, receipt } = await searchParams;
+  const { payment, receipt, dispute } = await searchParams;
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("orders")
-    .select(
-      "id, status, total_amount, items_total, delivery_fee, delivery_state, delivery_address, delivery_code, created_at, order_items(quantity, unit_price, products(name, unit))"
-    )
-    .order("created_at", { ascending: false });
+  const [{ data }, { data: disputeData }] = await Promise.all([
+    supabase
+      .from("orders")
+      .select(
+        "id, status, total_amount, items_total, delivery_fee, delivery_state, delivery_address, delivery_code, created_at, order_items(quantity, unit_price, products(name, unit))"
+      )
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("disputes")
+      .select("order_id, status, resolution, refund_amount"),
+  ]);
 
   const orders = (data ?? []) as unknown as OrderRow[];
+  const disputes = new Map(
+    ((disputeData ?? []) as DisputeRow[]).map((d) => [d.order_id, d])
+  );
 
   return (
     <div className="mt-4 flex flex-col gap-6">
@@ -86,6 +121,11 @@ async function BuyerContent({
           We couldn&apos;t complete that order. Please try again.
         </p>
       )}
+      {dispute === "opened" && (
+        <p className="rounded border border-yellow-600 p-3 text-yellow-500">
+          Your report has been sent. Farm Depot will review it.
+        </p>
+      )}
 
       <Link href="/marketplace" className="text-green-500 underline">
         Browse the marketplace
@@ -99,96 +139,107 @@ async function BuyerContent({
           <p className="text-gray-400">You haven&apos;t placed any orders yet.</p>
         ) : (
           <ul className="flex flex-col gap-3">
-            {orders.map((o) => (
-              <li key={o.id} className="rounded border border-gray-700 p-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-400">
-                    {formatDate(o.created_at)}
-                  </p>
-                  <span
-                    className={`rounded px-2 py-0.5 text-xs uppercase ${
-                      statusStyle[o.status] ?? "bg-gray-800"
-                    }`}
-                  >
-                    {o.status.replace("_", " ")}
-                  </span>
-                </div>
-
-                {o.order_items.map((item, i) => (
-                  <p key={i} className="mt-1">
-                    {item.products?.name ?? "Product"}: {item.quantity}{" "}
-                    {item.products?.unit ?? ""} × {formatNaira(item.unit_price)}
-                  </p>
-                ))}
-
-                {o.delivery_address && (
-                  <p className="mt-2 text-sm text-gray-400">
-                    Delivering to: {o.delivery_address}
-                    {o.delivery_state ? `, ${o.delivery_state}` : ""}
-                  </p>
-                )}
-
-                <div className="mt-2 text-sm">
-                  {o.items_total !== null && (
-                    <p className="flex justify-between">
-                      <span>Produce</span>
-                      <span>{formatNaira(o.items_total)}</span>
+            {orders.map((o) => {
+              const d = disputes.get(o.id);
+              return (
+                <li key={o.id} className="rounded border border-gray-700 p-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-gray-400">
+                      {formatDate(o.created_at)}
                     </p>
-                  )}
-                  {o.delivery_fee !== null && Number(o.delivery_fee) > 0 && (
-                    <p className="flex justify-between">
-                      <span>Delivery</span>
-                      <span>{formatNaira(o.delivery_fee)}</span>
-                    </p>
-                  )}
-                </div>
-
-                <p className="mt-1 font-bold text-green-500">
-                  Total: {formatNaira(o.total_amount)}
-                </p>
-
-                {o.status === "picked_up" &&
-                  o.delivery_code && (
-                    <p className="mt-3 rounded border border-yellow-700 p-2 text-sm text-yellow-300">
-                      Delivery code:{" "}
-                      <span className="font-mono text-lg font-bold">
-                        {o.delivery_code}
-                      </span>
-                      <br />
-                      Give this code to the driver only after you have received
-                      and checked your goods.
-                    </p>
-                  )}
-
-                {o.status === "pending" && (
-                  <form action={payForOrder} className="mt-3">
-                    <input type="hidden" name="order_id" value={o.id} />
-                    <button
-                      type="submit"
-                      className="rounded bg-green-600 px-4 py-2 font-semibold text-white"
+                    <span
+                      className={`rounded px-2 py-0.5 text-xs uppercase ${
+                        statusStyle[o.status] ?? "bg-gray-800"
+                      }`}
                     >
-                      Pay now
-                    </button>
-                  </form>
-                )}
+                      {o.status.replace("_", " ")}
+                    </span>
+                  </div>
 
-                {o.status === "delivered" && (
-                  <div className="mt-3 rounded border border-green-700 p-3 text-sm">
-                    <p>
-                      Your goods were delivered. If everything is as expected,
-                      confirm receipt to complete the order. If something is
-                      wrong, don&apos;t confirm and contact Farm Depot.
+                  {o.order_items.map((item, i) => (
+                    <p key={i} className="mt-1">
+                      {item.products?.name ?? "Product"}: {item.quantity}{" "}
+                      {item.products?.unit ?? ""} ×{" "}
+                      {formatNaira(item.unit_price)}
                     </p>
-                    <form action={confirmReceipt} className="mt-2">
+                  ))}
+
+                  {o.delivery_address && (
+                    <p className="mt-2 text-sm text-gray-400">
+                      Delivering to: {o.delivery_address}
+                      {o.delivery_state ? `, ${o.delivery_state}` : ""}
+                    </p>
+                  )}
+
+                  <div className="mt-2 text-sm">
+                    {o.items_total !== null && (
+                      <p className="flex justify-between">
+                        <span>Produce</span>
+                        <span>{formatNaira(o.items_total)}</span>
+                      </p>
+                    )}
+                    {o.delivery_fee !== null && Number(o.delivery_fee) > 0 && (
+                      <p className="flex justify-between">
+                        <span>Delivery</span>
+                        <span>{formatNaira(o.delivery_fee)}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  <p className="mt-1 font-bold text-green-500">
+                    Total: {formatNaira(o.total_amount)}
+                  </p>
+
+                  {["paid", "confirmed", "picked_up"].includes(o.status) &&
+                    o.delivery_code && (
+                      <p className="mt-3 rounded border border-yellow-700 p-2 text-sm text-yellow-300">
+                        Delivery code:{" "}
+                        <span className="font-mono text-lg font-bold">
+                          {o.delivery_code}
+                        </span>
+                        <br />
+                        Give this code to the driver only after you have
+                        received and checked your goods.
+                      </p>
+                    )}
+
+                  {d && (
+                    <p className="mt-3 rounded border border-gray-600 p-2 text-sm">
+                      {disputeOutcome(d)}
+                    </p>
+                  )}
+
+                  {o.status === "pending" && (
+                    <form action={payForOrder} className="mt-3">
                       <input type="hidden" name="order_id" value={o.id} />
-                      <button className="rounded bg-green-600 px-4 py-2 font-semibold text-white">
-                        I received my goods
+                      <button
+                        type="submit"
+                        className="rounded bg-green-600 px-4 py-2 font-semibold text-white"
+                      >
+                        Pay now
                       </button>
                     </form>
-                  </div>
-                )}
-              </li>
-            ))}
+                  )}
+
+                  {o.status === "delivered" && (
+                    <div className="mt-3 rounded border border-green-700 p-3 text-sm">
+                      <p>
+                        Your goods were delivered. If everything is as expected,
+                        confirm receipt to complete the order. If something is
+                        wrong, report a problem instead.
+                      </p>
+                      <form action={confirmReceipt} className="mt-2">
+                        <input type="hidden" name="order_id" value={o.id} />
+                        <button className="rounded bg-green-600 px-4 py-2 font-semibold text-white">
+                          I received my goods
+                        </button>
+                      </form>
+                      <DisputeForm orderId={o.id} />
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

@@ -11,20 +11,47 @@ type PayoutRow = {
   created_at: string;
 };
 
+type DebtRow = {
+  id: string;
+  amount: number;
+  created_at: string;
+};
+
 export default async function FarmerPayouts() {
   await connection();
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("payouts")
-    .select("id, order_id, kind, amount, status, created_at")
-    .order("created_at", { ascending: false });
+  const [{ data }, { data: debtData }] = await Promise.all([
+    supabase
+      .from("payouts")
+      .select("id, order_id, kind, amount, status, created_at")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("farmer_debts")
+      .select("id, amount, created_at")
+      .eq("status", "open")
+      .order("created_at", { ascending: false }),
+  ]);
 
   const payouts = (data ?? []) as PayoutRow[];
+  const debts = (debtData ?? []) as DebtRow[];
 
   return (
     <section>
       <h2 className="mb-3 text-xl font-semibold">Your payments</h2>
+
+      {debts.length > 0 && (
+        <div className="mb-4 rounded border border-red-700 p-3 text-sm text-red-300">
+          <p className="font-semibold">Amount to be deducted from your payments</p>
+          {debts.map((d) => (
+            <p key={d.id}>
+              {formatNaira(d.amount)} · {formatDate(d.created_at)} · after a
+              buyer&apos;s complaint about the produce quality
+            </p>
+          ))}
+        </div>
+      )}
+
       {payouts.length === 0 ? (
         <p className="text-gray-400">
           Payments appear here once Farm Depot collects your produce.
@@ -38,9 +65,7 @@ export default async function FarmerPayouts() {
             >
               <div>
                 <p className="font-semibold">
-                  {p.kind === "pickup"
-                    ? "Pickup payment"
-                    : "Final payment"}
+                  {p.kind === "pickup" ? "Pickup payment" : "Final payment"}
                 </p>
                 <p className="text-sm text-gray-400">
                   Order #{p.order_id.replace(/-/g, "").slice(0, 8).toUpperCase()}{" "}
