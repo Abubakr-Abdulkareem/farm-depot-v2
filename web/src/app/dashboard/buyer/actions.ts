@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "crypto";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
@@ -9,6 +10,26 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { initializeTransaction } from "@/lib/paystack";
 import { isDisputeReason } from "@/lib/disputes";
 import type { FormState } from "@/types";
+
+// The address the buyer is using right now (localhost while testing, the live
+// domain in production), so Paystack always sends them back to the same place.
+async function currentSiteUrl() {
+  const h = await headers();
+  const host = (h.get("x-forwarded-host") ?? h.get("host") ?? "")
+    .split(",")[0]
+    .trim();
+
+  if (!host) return process.env.NEXT_PUBLIC_SITE_URL ?? "";
+
+  const forwardedProto = (h.get("x-forwarded-proto") ?? "").split(",")[0].trim();
+  const proto =
+    forwardedProto ||
+    (host.startsWith("localhost") || host.startsWith("127.0.0.1")
+      ? "http"
+      : "https");
+
+  return `${proto}://${host}`;
+}
 
 export async function payForOrder(formData: FormData) {
   const { user } = await requireRole(["buyer"]);
@@ -37,13 +58,15 @@ export async function payForOrder(formData: FormData) {
 
   if (error) redirect("/dashboard/buyer?payment=error");
 
+  const siteUrl = await currentSiteUrl();
+
   let checkoutUrl: string;
   try {
     const tx = await initializeTransaction({
       email: user.email,
       amountKobo: Math.round(Number(order.total_amount) * 100),
       reference,
-      callbackUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/payment/callback`,
+      callbackUrl: `${siteUrl}/payment/callback`,
     });
     checkoutUrl = tx.authorization_url;
   } catch {
