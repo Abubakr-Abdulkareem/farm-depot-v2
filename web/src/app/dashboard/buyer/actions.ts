@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "crypto";
+import { after } from "next/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -9,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { initializeTransaction } from "@/lib/paystack";
 import { isDisputeReason } from "@/lib/disputes";
+import { notifyDisputeOpened } from "@/lib/notify";
 import type { FormState } from "@/types";
 
 // The address the buyer is using right now (localhost while testing, the live
@@ -134,6 +136,8 @@ export async function openDispute(
   });
 
   if (error) return { error: error.message };
+
+  after(() => notifyDisputeOpened(orderId));
 
   revalidatePath("/dashboard/buyer");
   revalidatePath("/dashboard/farmer");

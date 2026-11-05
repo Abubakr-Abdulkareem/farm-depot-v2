@@ -1,5 +1,7 @@
 import "server-only";
+import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyOrderPaid } from "@/lib/notify";
 
 const BASE = "https://api.paystack.co";
 
@@ -50,12 +52,17 @@ export async function confirmPayment(reference: string) {
     return { ok: false, message: "Payment was not successful" };
   }
 
-    const admin = createAdminClient();
+  const admin = createAdminClient();
   const { data, error } = await admin.rpc("mark_order_paid", {
     p_reference: reference,
     p_amount_kobo: tx.amount,
   });
   if (error) return { ok: false, message: error.message };
+
+  // The email is sent only once, even if the callback and webhook both run
+  if (data === "success") {
+    after(() => notifyOrderPaid(reference));
+  }
 
   return { ok: true, message: String(data) };
 }

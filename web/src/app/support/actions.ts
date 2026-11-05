@@ -1,9 +1,11 @@
 "use server";
 
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { notifySupportMessage } from "@/lib/notify";
 import type { FormState } from "@/types";
 
 export async function startThread(
@@ -31,6 +33,8 @@ export async function startThread(
   if (error || typeof data !== "string")
     return { error: error?.message ?? "Could not start the conversation." };
 
+  after(() => notifySupportMessage(data, false, body));
+
   revalidatePath("/support");
   revalidatePath("/admin/support");
   redirect(`/support/${data}`);
@@ -40,7 +44,7 @@ export async function postMessage(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  await requireRole(["buyer", "farmer", "admin"]);
+  const { profile } = await requireRole(["buyer", "farmer", "admin"]);
 
   const threadId = String(formData.get("thread_id") ?? "");
   const body = String(formData.get("body") ?? "").trim();
@@ -56,6 +60,9 @@ export async function postMessage(
   });
 
   if (error) return { error: error.message };
+
+  const fromAdmin = profile.role === "admin";
+  after(() => notifySupportMessage(threadId, fromAdmin, body));
 
   revalidatePath(`/support/${threadId}`);
   revalidatePath("/support");

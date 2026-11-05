@@ -1,12 +1,31 @@
 "use server";
 
+import { after } from "next/server";
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { containsContactInfo } from "@/lib/contact-filter";
-import { isNigerianState } from "@/lib/states";
-import { isPerishability } from "@/lib/perishability";
+import { parseProductForm } from "@/lib/product-input";
+import { isUuid } from "@/lib/uuid";
+import { notifyOrderConfirmed } from "@/lib/notify";
 import type { FormState } from "@/types";
+
+async function removeImage(imageUrl: string | null | undefined) {
+  if (!imageUrl) return;
+  const marker = "/product-images/";
+  const idx = imageUrl.indexOf(marker);
+  if (idx === -1) return;
+
+  const supabase = await createClient();
+  await supabase.storage
+    .from("product-images")
+    .remove([imageUrl.slice(idx + marker.length)]);
+}
+
+function refreshProductPages() {
+  revalidatePath("/dashboard/farmer");
+  revalidatePath("/marketplace");
+}
 
 export async function createProduct(
   _prev: FormState,
@@ -14,73 +33,87 @@ export async function createProduct(
 ): Promise<FormState> {
   const { user } = await requireRole(["farmer"]);
 
-  const name = String(formData.get("name") ?? "").trim();
-  const category = String(formData.get("category") ?? "").trim();
-  const description = String(formData.get("description") ?? "").trim();
-  const unit = String(formData.get("unit") ?? "kg").trim();
-  const location = String(formData.get("location") ?? "").trim();
-  const originState = String(formData.get("origin_state") ?? "").trim();
-  const perishability = String(formData.get("perishability") ?? "").trim();
-  const imageUrl = String(formData.get("image_url") ?? "").trim();
-  const price = Number(formData.get("price_per_unit"));
-  const quantity = Number(formData.get("quantity_available"));
-  const minOrder = Number(formData.get("min_order_quantity"));
-
-  if (!name) return { error: "Product name is required." };
-  if (!Number.isFinite(price) || price <= 0)
-    return { error: "Enter a valid price greater than 0." };
-  if (!Number.isFinite(quantity) || quantity <= 0)
-    return { error: "Enter a valid quantity available." };
-  if (!Number.isFinite(minOrder) || minOrder <= 0)
-    return { error: "Enter a valid minimum order." };
-  if (minOrder > quantity)
-    return { error: "Minimum order can't be more than the quantity available." };
-  if (!isNigerianState(originState))
-    return { error: "Choose the state where the produce is picked up." };
-  if (!isPerishability(perishability))
-    return { error: "Choose how fast this produce spoils." };
-
-  if ([name, description, location, category].some(containsContactInfo)) {
-    return {
-      error:
-        "Please remove phone numbers, emails and links. Buyers and farmers are connected through Farm Depot.",
-    };
-  }
-
-  // The image must live in THIS farmer's own folder in our storage bucket
-  const allowedPrefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${user.id}/`;
-  if (imageUrl && !imageUrl.startsWith(allowedPrefix)) {
-    return { error: "Invalid image. Please upload the photo again." };
-  }
+  const parsed = parseProductForm(formData, user.id);
+  if ("error" in parsed) return { error: parsed.error };
 
   const supabase = await createClient();
   const { error } = await supabase.from("products").insert({
     farmer_id: user.id,
-    name,
-    category: category || null,
-    description: description || null,
-    price_per_unit: price,
-    unit,
-    quantity_available: quantity,
-    min_order_quantity: minOrder,
-    location: location || null,
-    origin_state: originState,
-    perishability,
-    image_url: imageUrl || null,
+    ...parsed.values,
   });
 
   if (error) return { error: error.message };
 
-  revalidatePath("/dashboard/farmer");
-  revalidatePath("/marketplace");
+  refreshProductPages();
   return { success: true };
 }
 
-export async function deleteProduct(formData: FormData) {
-  await requireRole(["farmer"]);
+export async function updateProduct(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { user } = await requireRole(["farmer"]);
+
+  const productId = String(formData.get("product_id") ?? "");
+  if (!isUuid(productId)) return { error: "Missing product." };
+
+  const parsed = parseProductForm(formData, user.id);
+  if ("error" in parsed) return { error: parsed.error };
+
+  const supabase = await createClient();
+
+  const { data: existing } = await supabase
+    .from("products")
+    .select("id, image_url")
+    .eq("id", productId)
+    .eq("farmer_id", user.id)
+    .maybeSingle();
+
+  if (!existing) return { error: "Product not found." };
+
+  const { error } = await supabase
+    .from("products")
+    .update(parsed.values)
+    .eq("id", productId)
+    .eq("farmer_id", user.id);
+
+  if (error) return { error: error.message };
+
+  if (existing.image_url && existing.image_url !== parsed.values.image_url) {
+    await removeImage(existing.image_url);
+  }
+
+  refreshProductPages();
+  revalidatePath(`/marketplace/${productId}`);
+  redirect("/dashboard/farmer?notice=updated");
+}
+
+export async function setProductActive(formData: FormData) {
+  const { user } = await requireRole(["farmer"]);
 
   const id = String(formData.get("id") ?? "");
-  if (!id) return;
+  const active = String(formData.get("active") ?? "") === "true";
+  if (!isUuid(id)) redirect("/dashboard/farmer");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("products")
+    .update({ is_active: active })
+    .eq("id", id)
+    .eq("farmer_id", user.id);
+
+  refreshProductPages();
+  revalidatePath(`/marketplace/${id}`);
+
+  if (error) redirect("/dashboard/farmer?notice=update_failed");
+  redirect(`/dashboard/farmer?notice=${active ? "shown" : "hidden"}`);
+}
+
+export async function deleteProduct(formData: FormData) {
+  const { user } = await requireRole(["farmer"]);
+
+  const id = String(formData.get("id") ?? "");
+  if (!isUuid(id)) redirect("/dashboard/farmer");
 
   const supabase = await createClient();
 
@@ -88,22 +121,28 @@ export async function deleteProduct(formData: FormData) {
     .from("products")
     .select("image_url")
     .eq("id", id)
+    .eq("farmer_id", user.id)
     .maybeSingle();
 
-  const { error } = await supabase.from("products").delete().eq("id", id);
+  const { error } = await supabase
+    .from("products")
+    .delete()
+    .eq("id", id)
+    .eq("farmer_id", user.id);
 
-  if (!error && product?.image_url) {
-    const marker = "/product-images/";
-    const idx = product.image_url.indexOf(marker);
-    if (idx !== -1) {
-      await supabase.storage
-        .from("product-images")
-        .remove([product.image_url.slice(idx + marker.length)]);
-    }
+  if (error) {
+    // 23503 = the product is referenced by existing orders
+    redirect(
+      `/dashboard/farmer?notice=${
+        error.code === "23503" ? "has_orders" : "delete_failed"
+      }`
+    );
   }
 
-  revalidatePath("/dashboard/farmer");
-  revalidatePath("/marketplace");
+  await removeImage(product?.image_url);
+
+  refreshProductPages();
+  redirect("/dashboard/farmer?notice=deleted");
 }
 
 export async function updateOrderStatus(formData: FormData) {
@@ -118,7 +157,12 @@ export async function updateOrderStatus(formData: FormData) {
     p_order_id: orderId,
     p_new_status: status,
   });
-  if (error) console.error("Order status update failed:", error.message);
+
+  if (error) {
+    console.error("Order status update failed:", error.message);
+  } else {
+    after(() => notifyOrderConfirmed(orderId));
+  }
 
   revalidatePath("/dashboard/farmer");
   revalidatePath("/dashboard/buyer");

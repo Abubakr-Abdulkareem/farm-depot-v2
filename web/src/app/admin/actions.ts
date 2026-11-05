@@ -1,9 +1,17 @@
 "use server";
 
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import {
+  notifyPickedUp,
+  notifyDelivered,
+  notifyPayoutPaid,
+  notifyDisputeResolved,
+  notifyRefundPaid,
+} from "@/lib/notify";
 
 function finish(error?: { message: string } | null): never {
   revalidatePath("/admin");
@@ -26,6 +34,7 @@ export async function markPickedUp(formData: FormData) {
   const { error } = await supabase.rpc("admin_mark_picked_up", {
     p_order_id: orderId,
   });
+  if (!error) after(() => notifyPickedUp(orderId));
   finish(error);
 }
 
@@ -41,6 +50,7 @@ export async function markDelivered(formData: FormData) {
     p_order_id: orderId,
     p_code: code,
   });
+  if (!error) after(() => notifyDelivered(orderId));
   finish(error);
 }
 
@@ -67,6 +77,7 @@ export async function markPayoutPaid(formData: FormData) {
     p_payout_id: payoutId,
     p_reference: reference,
   });
+  if (!error) after(() => notifyPayoutPaid(payoutId));
   finish(error);
 }
 
@@ -92,6 +103,7 @@ export async function resolveDispute(formData: FormData) {
     p_fault: fault,
     p_note: note,
   });
+  if (!error) after(() => notifyDisputeResolved(disputeId));
   finish(error);
 }
 
@@ -106,6 +118,7 @@ export async function markRefundPaid(formData: FormData) {
     p_refund_id: refundId,
     p_reference: reference,
   });
+  if (!error) after(() => notifyRefundPaid(refundId));
   finish(error);
 }
 
