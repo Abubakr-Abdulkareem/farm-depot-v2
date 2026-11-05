@@ -260,7 +260,7 @@ export default function Home() {
 
           <div
             style={{ containerType: "inline-size" }}
-            className="flex min-h-[640px] flex-col justify-between gap-6 p-6 sm:p-8 lg:p-10"
+            className="flex min-h-160 flex-col justify-between gap-6 p-6 sm:p-8 lg:p-10"
           >
             <div className="flex items-center justify-between gap-4">
               <p className="text-[11px] tracking-[0.3em] text-white/70 uppercase sm:text-xs">
@@ -343,7 +343,7 @@ export default function Home() {
               position="object-[center_70%]"
             />
 
-            <div className="order-first col-span-2 flex flex-col items-center justify-center gap-4 text-center lg:order-none lg:col-span-1">
+            <div className="order-first col-span-2 flex flex-col items-center justify-center gap-4 text-center lg:order-0 lg:col-span-1">
               <p className="text-[11px] tracking-[0.3em] text-lime-300 uppercase">
                 Our promise
               </p>

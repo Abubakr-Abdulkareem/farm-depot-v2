@@ -1,10 +1,12 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
-import { createProduct } from "@/app/dashboard/farmer/actions";
+import { useActionState, useState } from "react";
+import Link from "next/link";
+import { createProduct, updateProduct } from "@/app/dashboard/farmer/actions";
 import { createClient } from "@/lib/supabase/client";
 import { NIGERIAN_STATES } from "@/lib/states";
-import type { FormState } from "@/types";
+import { CATEGORIES, UNITS } from "@/lib/product-input";
+import type { FormState, Product } from "@/types";
 
 const initialState: FormState = {};
 const input = "rounded border border-gray-600 bg-transparent p-2 w-full";
@@ -12,16 +14,19 @@ const input = "rounded border border-gray-600 bg-transparent p-2 w-full";
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
-export default function ProductForm() {
-  const formRef = useRef<HTMLFormElement>(null);
-  const [imageUrl, setImageUrl] = useState("");
+export default function ProductForm({ product }: { product?: Product }) {
+  const editing = Boolean(product);
+
+  const [imageUrl, setImageUrl] = useState(product?.image_url ?? "");
   const [uploading, setUploading] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
 
   const [state, formAction, pending] = useActionState(
     async (prev: FormState, formData: FormData) => {
-      const result = await createProduct(prev, formData);
-      if (result.success) setImageUrl("");
+      const result = product
+        ? await updateProduct(prev, formData)
+        : await createProduct(prev, formData);
+      if (result.success && !product) setImageUrl("");
       return result;
     },
     initialState
@@ -82,27 +87,42 @@ export default function ProductForm() {
   }
 
   return (
-    <form
-      ref={formRef}
-      action={formAction}
-      className="flex max-w-xl flex-col gap-3"
-    >
-      <h2 className="text-xl font-semibold">Add a product</h2>
+    <form action={formAction} className="flex max-w-xl flex-col gap-3">
+      <h2 className="text-xl font-semibold">
+        {editing ? "Edit product" : "Add a product"}
+      </h2>
 
-      <input name="name" placeholder="Product name (e.g. White maize)" className={input} required />
+      {product && <input type="hidden" name="product_id" value={product.id} />}
 
-      <select name="category" className={input} defaultValue="">
-        <option value="" className="text-black">Category (optional)</option>
-        <option value="Grains" className="text-black">Grains</option>
-        <option value="Tubers" className="text-black">Tubers</option>
-        <option value="Vegetables" className="text-black">Vegetables</option>
-        <option value="Fruits" className="text-black">Fruits</option>
-        <option value="Livestock" className="text-black">Livestock</option>
-        <option value="Poultry" className="text-black">Poultry</option>
-        <option value="Other" className="text-black">Other</option>
+      <input
+        name="name"
+        defaultValue={product?.name ?? ""}
+        placeholder="Product name (e.g. White maize)"
+        className={input}
+        required
+      />
+
+      <select
+        name="category"
+        className={input}
+        defaultValue={product?.category ?? ""}
+      >
+        <option value="" className="text-black">
+          Category (optional)
+        </option>
+        {CATEGORIES.map((c) => (
+          <option key={c} value={c} className="text-black">
+            {c}
+          </option>
+        ))}
       </select>
 
-      <select name="perishability" className={input} defaultValue="" required>
+      <select
+        name="perishability"
+        className={input}
+        defaultValue={product?.perishability ?? ""}
+        required
+      >
         <option value="" className="text-black">
           How fast does it spoil?
         </option>
@@ -120,25 +140,67 @@ export default function ProductForm() {
         Fast-spoiling produce can only be delivered on short routes.
       </p>
 
-      <textarea name="description" placeholder="Description (quality, harvest date, etc.)" className={input} rows={3} />
+      <textarea
+        name="description"
+        defaultValue={product?.description ?? ""}
+        placeholder="Description (quality, harvest date, etc.)"
+        className={input}
+        rows={3}
+      />
 
       <div className="flex gap-3">
-        <input name="price_per_unit" type="number" step="0.01" min="0" placeholder="Price per unit (₦)" className={input} required />
-        <select name="unit" className={input} defaultValue="kg">
-          <option value="kg" className="text-black">per kg</option>
-          <option value="bag" className="text-black">per bag</option>
-          <option value="basket" className="text-black">per basket</option>
-          <option value="crate" className="text-black">per crate</option>
-          <option value="ton" className="text-black">per ton</option>
+        <input
+          name="price_per_unit"
+          type="number"
+          step="0.01"
+          min="0"
+          defaultValue={product?.price_per_unit ?? ""}
+          placeholder="Price per unit (₦)"
+          className={input}
+          required
+        />
+        <select
+          name="unit"
+          className={input}
+          defaultValue={product?.unit ?? "kg"}
+        >
+          {UNITS.map((u) => (
+            <option key={u} value={u} className="text-black">
+              per {u}
+            </option>
+          ))}
         </select>
       </div>
 
       <div className="flex gap-3">
-        <input name="quantity_available" type="number" step="0.01" min="0" placeholder="Quantity available" className={input} required />
-        <input name="min_order_quantity" type="number" step="0.01" min="0" placeholder="Minimum order" className={input} required />
+        <input
+          name="quantity_available"
+          type="number"
+          step="0.01"
+          min="0"
+          defaultValue={product?.quantity_available ?? ""}
+          placeholder="Quantity available"
+          className={input}
+          required
+        />
+        <input
+          name="min_order_quantity"
+          type="number"
+          step="0.01"
+          min="0"
+          defaultValue={product?.min_order_quantity ?? ""}
+          placeholder="Minimum order"
+          className={input}
+          required
+        />
       </div>
 
-      <select name="origin_state" className={input} defaultValue="" required>
+      <select
+        name="origin_state"
+        className={input}
+        defaultValue={product?.origin_state ?? ""}
+        required
+      >
         <option value="" className="text-black">
           State where the produce is picked up
         </option>
@@ -151,6 +213,7 @@ export default function ProductForm() {
 
       <input
         name="location"
+        defaultValue={product?.location ?? ""}
         placeholder="Town or area (optional, no phone numbers)"
         className={input}
       />
@@ -168,28 +231,53 @@ export default function ProductForm() {
         {uploading && <p className="text-sm text-gray-400">Uploading photo...</p>}
         {imageError && <p className="text-sm text-red-500">{imageError}</p>}
         {imageUrl && (
-          <>
+          <div className="flex items-end gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={imageUrl}
               alt="Product preview"
               className="h-40 w-40 rounded object-cover"
             />
-          </>
+            <button
+              type="button"
+              onClick={() => setImageUrl("")}
+              className="rounded border border-gray-600 px-3 py-1 text-sm"
+            >
+              Remove photo
+            </button>
+          </div>
         )}
         <input type="hidden" name="image_url" value={imageUrl} />
       </div>
 
       {state.error && <p className="text-red-500">{state.error}</p>}
-      {state.success && <p className="text-green-500">Product added.</p>}
+      {state.success && !editing && (
+        <p className="text-green-500">Product added.</p>
+      )}
 
-      <button
-        type="submit"
-        disabled={pending || uploading}
-        className="rounded bg-green-600 p-2 font-semibold text-white disabled:opacity-50"
-      >
-        {pending ? "Saving..." : uploading ? "Uploading photo..." : "Add product"}
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          type="submit"
+          disabled={pending || uploading}
+          className="rounded bg-green-600 px-4 py-2 font-semibold text-white disabled:opacity-50"
+        >
+          {pending
+            ? "Saving..."
+            : uploading
+            ? "Uploading photo..."
+            : editing
+            ? "Save changes"
+            : "Add product"}
+        </button>
+        {editing && (
+          <Link
+            href="/dashboard/farmer"
+            className="rounded border border-gray-600 px-4 py-2 text-sm"
+          >
+            Cancel
+          </Link>
+        )}
+      </div>
     </form>
   );
 }
