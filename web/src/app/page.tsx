@@ -4,10 +4,8 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { formatNaira } from "@/lib/format";
+import { container, panel, eyebrow, primaryButton } from "@/lib/layout";
 import type { Product } from "@/types";
-
-// One padding value for every panel, so spacing is equal everywhere
-const panel = "rounded-3xl border border-white/10 p-6 sm:p-8 lg:p-10";
 
 const heroPoints = [
   "Direct from farmers",
@@ -172,7 +170,7 @@ async function FreshProducts() {
     .select("*")
     .eq("is_active", true)
     .order("created_at", { ascending: false })
-    .limit(3);
+    .limit(4);
 
   const products = (data ?? []) as Product[];
 
@@ -185,7 +183,7 @@ async function FreshProducts() {
   }
 
   return (
-    <ul className="grid gap-6 sm:grid-cols-3">
+    <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
       {products.map((p) => (
         <li key={p.id}>
           <Link
@@ -231,8 +229,8 @@ async function FreshProducts() {
 
 function ProductsSkeleton() {
   return (
-    <ul className="grid gap-6 sm:grid-cols-3">
-      {[0, 1, 2].map((i) => (
+    <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      {[0, 1, 2, 3].map((i) => (
         <li
           key={i}
           className="h-64 animate-pulse rounded-2xl border border-white/10 bg-white/5"
@@ -244,8 +242,8 @@ function ProductsSkeleton() {
 
 export default function Home() {
   return (
-    <main className="bg-[#07110c] text-white">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6">
+    <main className="text-white">
+      <div className={`${container} flex flex-col gap-6 py-6`}>
         {/* Hero */}
         <section className="relative isolate overflow-hidden rounded-3xl border border-white/10">
           <Image
@@ -260,7 +258,7 @@ export default function Home() {
 
           <div
             style={{ containerType: "inline-size" }}
-            className="flex min-h-160 flex-col justify-between gap-6 p-6 sm:p-8 lg:p-10"
+            className="flex min-h-[max(40rem,calc(100svh-9rem))] flex-col justify-between gap-6 p-6 sm:p-8 lg:p-10"
           >
             <div className="flex items-center justify-between gap-4">
               <p className="text-[11px] tracking-[0.3em] text-white/70 uppercase sm:text-xs">
@@ -274,7 +272,7 @@ export default function Home() {
               </Link>
             </div>
 
-            <h1 className="text-center text-[clamp(2.5rem,15.5cqw,12rem)] leading-none font-extrabold tracking-tight whitespace-nowrap">
+            <h1 className="text-center text-[clamp(2.5rem,14.4cqw,16rem)] leading-none font-extrabold tracking-tight whitespace-nowrap">
               <span className="text-white">FARM</span>
               <span className="text-lime-300">DEPOT</span>
             </h1>
@@ -290,7 +288,7 @@ export default function Home() {
                 </p>
                 <Link
                   href="/marketplace"
-                  className="mt-5 inline-block rounded-full bg-lime-300 px-6 py-3 font-semibold text-black transition hover:bg-lime-200"
+                  className={`${primaryButton} mt-5 inline-block`}
                 >
                   Browse the marketplace →
                 </Link>
@@ -344,9 +342,7 @@ export default function Home() {
             />
 
             <div className="order-first col-span-2 flex flex-col items-center justify-center gap-4 text-center lg:order-0 lg:col-span-1">
-              <p className="text-[11px] tracking-[0.3em] text-lime-300 uppercase">
-                Our promise
-              </p>
+              <p className={eyebrow}>Our promise</p>
               <h2 className="text-2xl leading-tight font-bold sm:text-3xl">
                 Buying and selling in bulk,{" "}
                 <span className="text-lime-300">made simple.</span>
@@ -403,10 +399,8 @@ export default function Home() {
         </section>
 
         {/* How it works */}
-        <section id="how" className={`${panel} scroll-mt-6 bg-white/5`}>
-          <p className="text-center text-xs tracking-[0.3em] text-lime-300 uppercase">
-            How it works
-          </p>
+        <section id="how" className={`${panel} scroll-mt-24 bg-white/5`}>
+          <p className={`${eyebrow} text-center`}>How it works</p>
           <h2 className="mt-2 text-center text-3xl font-bold sm:text-4xl">
             From the farm to your door in four steps
           </h2>
@@ -431,9 +425,7 @@ export default function Home() {
         <section className={`${panel} bg-white/5`}>
           <div className="mb-8 flex items-end justify-between gap-6">
             <div>
-              <p className="text-xs tracking-[0.3em] text-lime-300 uppercase">
-                Fresh on the marketplace
-              </p>
+              <p className={eyebrow}>Fresh on the marketplace</p>
               <h2 className="mt-2 text-3xl font-bold">Newly listed produce</h2>
             </div>
             <Link
@@ -461,10 +453,7 @@ export default function Home() {
             minutes.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-4">
-            <Link
-              href="/register"
-              className="rounded-full bg-lime-300 px-6 py-3 font-semibold text-black transition hover:bg-lime-200"
-            >
+            <Link href="/register" className={primaryButton}>
               Get started
             </Link>
             <Link

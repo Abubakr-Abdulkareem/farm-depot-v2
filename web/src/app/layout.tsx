@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import { container } from "@/lib/layout";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,8 +32,10 @@ export default function RootLayout({
       >
         <Suspense
           fallback={
-            <header className="border-b border-gray-800 p-4 text-xl font-bold text-green-500">
-              Farm Depot
+            <header className="border-b border-white/10">
+              <div className={`${container} py-4 text-xl font-bold text-lime-300`}>
+                Farm Depot
+              </div>
             </header>
           }
         >

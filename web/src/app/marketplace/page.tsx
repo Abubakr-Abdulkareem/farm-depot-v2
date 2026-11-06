@@ -3,6 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { formatNaira } from "@/lib/format";
+import { container, eyebrow, field, primaryButton } from "@/lib/layout";
 import type { Product } from "@/types";
 
 const CATEGORIES = [
@@ -102,9 +103,12 @@ async function ProductList({ filters }: { filters: Filters }) {
   if (error) {
     return (
       <div>
-        <p className="text-gray-400">No products on this page.</p>
+        <p className="text-white/60">No products on this page.</p>
         {filters.page > 1 && (
-          <Link href={buildHref(filters, 1)} className="text-green-500 underline">
+          <Link
+            href={buildHref(filters, 1)}
+            className="text-lime-300 underline"
+          >
             Back to page 1
           </Link>
         )}
@@ -117,50 +121,59 @@ async function ProductList({ filters }: { filters: Filters }) {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   if (products.length === 0) {
-    return <p className="text-gray-400">No products match your search.</p>;
+    return <p className="text-white/60">No products match your search.</p>;
   }
+
+  const pageButton =
+    "rounded-full border border-white/20 px-4 py-2 transition hover:bg-white/10";
+  const pageButtonOff =
+    "rounded-full border border-white/10 px-4 py-2 text-white/30";
 
   return (
     <div>
-      <p className="mb-3 text-sm text-gray-400">
+      <p className="mb-4 text-sm text-white/60">
         {total} product{total === 1 ? "" : "s"} found
       </p>
 
-      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {products.map((p) => (
           <li key={p.id}>
             <Link
               href={`/marketplace/${p.id}`}
-              className="block overflow-hidden rounded border border-gray-700 hover:border-green-600"
+              className="group block h-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 transition hover:border-lime-300/60"
             >
-              <div className="aspect-4/3 w-full bg-gray-800">
+              <div className="relative aspect-4/3 w-full overflow-hidden bg-white/5">
                 {p.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={p.image_url}
                     alt={p.name}
                     loading="lazy"
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                   />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-sm text-gray-500">
+                  <div className="flex h-full items-center justify-center text-sm text-white/40">
                     No photo
                   </div>
                 )}
+                {p.perishability === "high" && (
+                  <span className="absolute top-3 left-3 rounded-full bg-red-950/80 px-3 py-1 text-xs text-red-200">
+                    Fresh · short routes only
+                  </span>
+                )}
               </div>
               <div className="p-4">
-                <h2 className="text-lg font-semibold">{p.name}</h2>
-                {p.category && (
-                  <p className="text-sm text-gray-400">{p.category}</p>
-                )}
-                {p.perishability === "high" && (
-                  <p className="mt-1 inline-block rounded bg-red-900 px-2 py-0.5 text-xs text-red-300">
-                    Fresh · short-distance delivery only
-                  </p>
-                )}
-                <p className="mt-2 text-xl font-bold text-green-500">
+                <div className="flex items-start justify-between gap-2">
+                  <h2 className="text-lg font-semibold">{p.name}</h2>
+                  {p.category && (
+                    <span className="shrink-0 rounded-full border border-white/15 px-2 py-0.5 text-xs text-white/70">
+                      {p.category}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-2 text-xl font-bold text-lime-300">
                   {formatNaira(p.price_per_unit)}
-                  <span className="text-sm font-normal text-gray-400">
+                  <span className="text-sm font-normal text-white/60">
                     {" "}
                     / {p.unit}
                   </span>
@@ -168,15 +181,15 @@ async function ProductList({ filters }: { filters: Filters }) {
                 <p className="mt-1 text-sm">
                   {p.quantity_available} {p.unit} available
                 </p>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-white/60">
                   Min order: {p.min_order_quantity} {p.unit}
                 </p>
                 {(p.location || p.origin_state) && (
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm text-white/60">
                     📍 {[p.location, p.origin_state].filter(Boolean).join(", ")}
                   </p>
                 )}
-                <p className="mt-2 text-sm text-gray-400">
+                <p className="mt-2 text-sm text-white/50">
                   Seller: Farmer #{p.farmer_id.slice(0, 4).toUpperCase()}
                 </p>
               </div>
@@ -186,33 +199,29 @@ async function ProductList({ filters }: { filters: Filters }) {
       </ul>
 
       {totalPages > 1 && (
-        <div className="mt-6 flex items-center justify-center gap-4 text-sm">
+        <div className="mt-8 flex items-center justify-center gap-4 text-sm">
           {filters.page > 1 ? (
             <Link
               href={buildHref(filters, filters.page - 1)}
-              className="rounded border border-gray-600 px-3 py-1"
+              className={pageButton}
             >
               ← Previous
             </Link>
           ) : (
-            <span className="rounded border border-gray-800 px-3 py-1 text-gray-600">
-              ← Previous
-            </span>
+            <span className={pageButtonOff}>← Previous</span>
           )}
-          <span className="text-gray-400">
+          <span className="text-white/60">
             Page {filters.page} of {totalPages}
           </span>
           {filters.page < totalPages ? (
             <Link
               href={buildHref(filters, filters.page + 1)}
-              className="rounded border border-gray-600 px-3 py-1"
+              className={pageButton}
             >
               Next →
             </Link>
           ) : (
-            <span className="rounded border border-gray-800 px-3 py-1 text-gray-600">
-              Next →
-            </span>
+            <span className={pageButtonOff}>Next →</span>
           )}
         </div>
       )}
@@ -226,20 +235,19 @@ async function MarketplaceContent({
   searchParams: Promise<RawParams>;
 }) {
   const filters = parseFilters(await searchParams);
-  const field = "rounded border border-gray-600 bg-transparent p-2 text-sm";
 
   return (
     <>
       <form
         method="get"
         action="/marketplace"
-        className="mb-6 flex flex-wrap items-end gap-3"
+        className="mb-8 flex flex-wrap items-end gap-3 rounded-2xl border border-white/10 bg-white/5 p-4"
       >
         <input
           name="q"
           defaultValue={filters.q}
           placeholder="Search products (e.g. yam)"
-          className={`${field} w-full sm:w-64`}
+          className={`${field} w-full sm:w-72`}
         />
         <select
           name="category"
@@ -259,7 +267,7 @@ async function MarketplaceContent({
           name="location"
           defaultValue={filters.location}
           placeholder="Location (e.g. Ogun)"
-          className={`${field} w-full sm:w-44`}
+          className={`${field} w-full sm:w-48`}
         />
         <select name="sort" defaultValue={filters.sort} className={field}>
           {Object.entries(SORTS).map(([value, label]) => (
@@ -272,20 +280,20 @@ async function MarketplaceContent({
             </option>
           ))}
         </select>
-        <button
-          type="submit"
-          className="rounded bg-green-600 px-4 py-2 text-sm font-semibold text-white"
-        >
+        <button type="submit" className={`${primaryButton} py-2.5 text-sm`}>
           Search
         </button>
-        <Link href="/marketplace" className="py-2 text-sm text-gray-400 underline">
+        <Link
+          href="/marketplace"
+          className="py-2.5 text-sm text-white/60 underline"
+        >
           Clear
         </Link>
       </form>
 
       <Suspense
         key={JSON.stringify(filters)}
-        fallback={<p>Loading products...</p>}
+        fallback={<p className="text-white/60">Loading products...</p>}
       >
         <ProductList filters={filters} />
       </Suspense>
@@ -299,9 +307,12 @@ export default function Page({
   searchParams: Promise<RawParams>;
 }) {
   return (
-    <main className="mx-auto max-w-6xl p-6">
-      <h1 className="mb-4 text-2xl font-bold">Marketplace</h1>
-      <Suspense fallback={<p>Loading...</p>}>
+    <main className={`${container} py-8`}>
+      <p className={eyebrow}>Marketplace</p>
+      <h1 className="mt-2 mb-6 text-3xl font-bold sm:text-4xl">
+        Fresh produce from farms across Nigeria
+      </h1>
+      <Suspense fallback={<p className="text-white/60">Loading...</p>}>
         <MarketplaceContent searchParams={searchParams} />
       </Suspense>
     </main>

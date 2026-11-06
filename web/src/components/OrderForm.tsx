@@ -3,10 +3,10 @@
 import { useActionState, useState } from "react";
 import { placeOrder } from "@/app/marketplace/[id]/actions";
 import { formatNaira } from "@/lib/format";
+import { field, primaryButton } from "@/lib/layout";
 import type { DeliveryRoute, FormState } from "@/types";
 
 const initialState: FormState = {};
-const field = "rounded border border-gray-600 bg-transparent p-2 w-full";
 
 export default function OrderForm({
   productId,
@@ -34,7 +34,7 @@ export default function OrderForm({
 
   if (routes.length === 0) {
     return (
-      <p className="mt-6 text-gray-400">
+      <p className="text-white/60">
         Delivery from this seller&apos;s state isn&apos;t available yet. Please
         check back soon.
       </p>
@@ -43,7 +43,7 @@ export default function OrderForm({
 
   if (!routes.some((r) => r.allowed)) {
     return (
-      <p className="mt-6 text-gray-400">
+      <p className="text-white/60">
         This produce spoils quickly, and none of our delivery routes from the
         pickup point are short enough yet. Please check back soon.
       </p>
@@ -51,10 +51,12 @@ export default function OrderForm({
   }
 
   return (
-    <form action={formAction} className="mt-6 flex max-w-sm flex-col gap-3">
+    <form action={formAction} className="flex flex-col gap-3">
+      <h2 className="text-lg font-semibold">Place your order</h2>
+
       <input type="hidden" name="product_id" value={productId} />
 
-      <label className="text-sm text-gray-400">
+      <label className="text-sm text-white/60">
         Quantity ({unit}), between {min} and {max}
       </label>
       <input
@@ -65,16 +67,16 @@ export default function OrderForm({
         max={max}
         value={qty}
         onChange={(e) => setQty(e.target.value)}
-        className={field}
+        className={`${field} w-full`}
         required
       />
 
-      <label className="text-sm text-gray-400">Delivery state</label>
+      <label className="text-sm text-white/60">Delivery state</label>
       <select
         name="delivery_state"
         value={deliveryState}
         onChange={(e) => setDeliveryState(e.target.value)}
-        className={field}
+        className={`${field} w-full`}
         required
       >
         <option value="" className="text-black">
@@ -95,45 +97,41 @@ export default function OrderForm({
         ))}
       </select>
 
-      <label className="text-sm text-gray-400">Delivery address</label>
+      <label className="text-sm text-white/60">Delivery address</label>
       <textarea
         name="delivery_address"
         rows={3}
         placeholder="Street, area, landmark"
-        className={field}
+        className={`${field} w-full`}
         required
       />
 
-      <label className="text-sm text-gray-400">Phone number for delivery</label>
+      <label className="text-sm text-white/60">Phone number for delivery</label>
       <input
         name="delivery_phone"
         type="tel"
         placeholder="e.g. 0801 234 5678"
-        className={field}
+        className={`${field} w-full`}
         required
       />
 
-      <div className="rounded border border-gray-700 p-3 text-sm">
+      <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm">
         <p className="flex justify-between">
-          <span>Produce</span>
+          <span className="text-white/70">Produce</span>
           <span>{formatNaira(itemsTotal)}</span>
         </p>
-        <p className="flex justify-between">
-          <span>Delivery</span>
+        <p className="mt-1 flex justify-between">
+          <span className="text-white/70">Delivery</span>
           <span>{selected ? formatNaira(fee) : "Choose a state"}</span>
         </p>
-        <p className="mt-1 flex justify-between border-t border-gray-700 pt-1 text-base font-bold text-green-500">
+        <p className="mt-2 flex justify-between border-t border-white/10 pt-2 text-base font-bold text-lime-300">
           <span>Total</span>
           <span>{formatNaira(total)}</span>
         </p>
       </div>
 
-      {state.error && <p className="text-red-500">{state.error}</p>}
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded bg-green-600 p-2 font-semibold text-white disabled:opacity-50"
-      >
+      {state.error && <p className="text-red-400">{state.error}</p>}
+      <button type="submit" disabled={pending} className={primaryButton}>
         {pending ? "Placing order..." : "Place order"}
       </button>
     </form>
