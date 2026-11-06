@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import LogoutButton from "@/components/LogoutButton";
@@ -6,11 +7,41 @@ import ProductForm from "@/components/ProductForm";
 import PickupDetailsForm from "@/components/PickupDetailsForm";
 import FarmerOrders from "@/components/FarmerOrders";
 import FarmerPayouts from "@/components/FarmerPayouts";
-import { deleteProduct } from "./actions";
+import { deleteProduct, setProductActive } from "./actions";
 import type { Product } from "@/types";
 
-async function FarmerContent() {
+type Params = { notice?: string };
+
+const NOTICES: Record<string, { text: string; good: boolean }> = {
+  updated: { text: "Listing updated.", good: true },
+  hidden: {
+    text: "Listing hidden. Buyers can't see it until you show it again.",
+    good: true,
+  },
+  shown: { text: "Listing is visible again.", good: true },
+  deleted: { text: "Listing deleted.", good: true },
+  has_orders: {
+    text: "This listing has orders, so it can't be deleted. Hide it instead.",
+    good: false,
+  },
+  delete_failed: {
+    text: "We couldn't delete that listing. Please try again.",
+    good: false,
+  },
+  update_failed: {
+    text: "We couldn't update that listing. Please try again.",
+    good: false,
+  },
+};
+
+async function FarmerContent({
+  searchParams,
+}: {
+  searchParams: Promise<Params>;
+}) {
   const { user, profile } = await requireRole(["farmer"]);
+  const { notice } = await searchParams;
+  const message = notice ? NOTICES[notice] : undefined;
 
   const supabase = await createClient();
   const [{ data }, { data: details }] = await Promise.all([
@@ -35,6 +66,18 @@ async function FarmerContent() {
         <p>Welcome, {profile.full_name}</p>
         <LogoutButton />
       </div>
+
+      {message && (
+        <p
+          className={`rounded border p-3 ${
+            message.good
+              ? "border-green-600 text-green-500"
+              : "border-red-600 text-red-500"
+          }`}
+        >
+          {message.text}
+        </p>
+      )}
 
       {!hasPickupDetails && (
         <p className="rounded border border-yellow-600 p-3 text-yellow-500">
@@ -61,7 +104,7 @@ async function FarmerContent() {
             {products.map((p) => (
               <li
                 key={p.id}
-                className="flex items-center justify-between gap-3 rounded border border-gray-700 p-3"
+                className="flex flex-wrap items-center justify-between gap-3 rounded border border-gray-700 p-3"
               >
                 <div className="flex items-center gap-3">
                   {p.image_url ? (
@@ -69,7 +112,9 @@ async function FarmerContent() {
                     <img
                       src={p.image_url}
                       alt={p.name}
-                      className="h-16 w-16 rounded object-cover"
+                      className={`h-16 w-16 rounded object-cover ${
+                        p.is_active ? "" : "opacity-50"
+                      }`}
                     />
                   ) : (
                     <div className="flex h-16 w-16 items-center justify-center rounded bg-gray-800 text-xs text-gray-500">
@@ -77,7 +122,14 @@ async function FarmerContent() {
                     </div>
                   )}
                   <div>
-                    <p className="font-semibold">{p.name}</p>
+                    <p className="flex flex-wrap items-center gap-2 font-semibold">
+                      {p.name}
+                      {!p.is_active && (
+                        <span className="rounded bg-gray-700 px-2 py-0.5 text-xs uppercase text-gray-200">
+                          Hidden
+                        </span>
+                      )}
+                    </p>
                     <p className="text-sm text-gray-400">
                       ₦{Number(p.price_per_unit).toLocaleString("en-NG")} per {p.unit} ·{" "}
                       {p.quantity_available} {p.unit} available · min order{" "}
@@ -85,12 +137,34 @@ async function FarmerContent() {
                     </p>
                   </div>
                 </div>
-                <form action={deleteProduct}>
-                  <input type="hidden" name="id" value={p.id} />
-                  <button className="rounded border border-red-500 px-3 py-1 text-red-500">
-                    Delete
-                  </button>
-                </form>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/dashboard/farmer/products/${p.id}/edit`}
+                    className="rounded border border-gray-600 px-3 py-1 text-sm"
+                  >
+                    Edit
+                  </Link>
+
+                  <form action={setProductActive}>
+                    <input type="hidden" name="id" value={p.id} />
+                    <input
+                      type="hidden"
+                      name="active"
+                      value={p.is_active ? "false" : "true"}
+                    />
+                    <button className="rounded border border-gray-600 px-3 py-1 text-sm">
+                      {p.is_active ? "Hide" : "Show"}
+                    </button>
+                  </form>
+
+                  <form action={deleteProduct}>
+                    <input type="hidden" name="id" value={p.id} />
+                    <button className="rounded border border-red-500 px-3 py-1 text-sm text-red-500">
+                      Delete
+                    </button>
+                  </form>
+                </div>
               </li>
             ))}
           </ul>
@@ -108,12 +182,16 @@ async function FarmerContent() {
   );
 }
 
-export default function Page() {
+export default function Page({
+  searchParams,
+}: {
+  searchParams: Promise<Params>;
+}) {
   return (
     <main className="p-6">
       <h1 className="text-2xl font-bold">Farmer dashboard</h1>
       <Suspense fallback={<p>Loading...</p>}>
-        <FarmerContent />
+        <FarmerContent searchParams={searchParams} />
       </Suspense>
     </main>
   );
