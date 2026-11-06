@@ -2,10 +2,11 @@
 
 import { useActionState } from "react";
 import { startThread } from "@/app/support/actions";
+import { card, field, noticeBad, primaryButton } from "@/lib/layout";
 import type { FormState } from "@/types";
 
 const initialState: FormState = {};
-const field = "w-full rounded border border-gray-600 bg-transparent p-2 text-sm";
+const input = `${field} w-full`;
 
 export type OrderOption = { id: string; label: string };
 
@@ -16,9 +17,9 @@ export default function NewThreadForm({ orders }: { orders: OrderOption[] }) {
   );
 
   return (
-    <form action={formAction} className="flex max-w-xl flex-col gap-3">
+    <form action={formAction} className={`${card} flex flex-col gap-3`}>
       <h2 className="text-xl font-semibold">Start a conversation</h2>
-      <p className="text-sm text-gray-400">
+      <p className="text-sm text-white/60">
         You are talking to Farm Depot. Farm Depot staff can read this
         conversation.
       </p>
@@ -28,11 +29,11 @@ export default function NewThreadForm({ orders }: { orders: OrderOption[] }) {
         placeholder="Subject (e.g. Question about my order)"
         minLength={3}
         maxLength={120}
-        className={field}
+        className={input}
         required
       />
 
-      <select name="order_id" defaultValue="" className={field}>
+      <select name="order_id" defaultValue="" className={input}>
         <option value="" className="text-black">
           Not about a specific order
         </option>
@@ -48,17 +49,13 @@ export default function NewThreadForm({ orders }: { orders: OrderOption[] }) {
         rows={4}
         maxLength={2000}
         placeholder="How can we help?"
-        className={field}
+        className={input}
         required
       />
 
-      {state.error && <p className="text-sm text-red-500">{state.error}</p>}
+      {state.error && <p className={noticeBad}>{state.error}</p>}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="w-fit rounded bg-green-600 px-4 py-2 font-semibold text-white disabled:opacity-50"
-      >
+      <button type="submit" disabled={pending} className={primaryButton}>
         {pending ? "Sending..." : "Send"}
       </button>
     </form>

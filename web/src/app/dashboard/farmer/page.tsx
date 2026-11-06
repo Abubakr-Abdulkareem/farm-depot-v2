@@ -7,6 +7,17 @@ import ProductForm from "@/components/ProductForm";
 import PickupDetailsForm from "@/components/PickupDetailsForm";
 import FarmerOrders from "@/components/FarmerOrders";
 import FarmerPayouts from "@/components/FarmerPayouts";
+import {
+  badge,
+  card,
+  container,
+  dangerButton,
+  eyebrow,
+  noticeBad,
+  noticeGood,
+  noticeWarn,
+  smallButton,
+} from "@/lib/layout";
 import { deleteProduct, setProductActive } from "./actions";
 import type { Product } from "@/types";
 
@@ -61,123 +72,127 @@ async function FarmerContent({
   const hasPickupDetails = Boolean(details?.phone && details?.location);
 
   return (
-    <div className="mt-4 flex flex-col gap-8">
-      <div className="flex items-center gap-4">
-        <p>Welcome, {profile.full_name}</p>
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className={eyebrow}>Farmer dashboard</p>
+          <h1 className="mt-2 text-3xl font-bold sm:text-4xl">
+            Welcome, {profile.full_name}
+          </h1>
+        </div>
         <LogoutButton />
       </div>
 
       {message && (
-        <p
-          className={`rounded border p-3 ${
-            message.good
-              ? "border-green-600 text-green-500"
-              : "border-red-600 text-red-500"
-          }`}
-        >
-          {message.text}
-        </p>
+        <p className={message.good ? noticeGood : noticeBad}>{message.text}</p>
       )}
 
       {!hasPickupDetails && (
-        <p className="rounded border border-yellow-600 p-3 text-yellow-500">
+        <p className={noticeWarn}>
           Add your pickup details below so our driver can collect your orders.
         </p>
       )}
 
-      <PickupDetailsForm
-        phone={details?.phone ?? ""}
-        location={details?.location ?? ""}
-        businessName={details?.business_name ?? ""}
-      />
+      <div className="grid items-start gap-8 lg:grid-cols-2">
+        <div className="flex flex-col gap-8">
+          <PickupDetailsForm
+            phone={details?.phone ?? ""}
+            location={details?.location ?? ""}
+            businessName={details?.business_name ?? ""}
+          />
+          <ProductForm />
+        </div>
 
-      <ProductForm />
-
-      <section>
-        <h2 className="mb-3 text-xl font-semibold">
-          Your listings ({products.length})
-        </h2>
-        {products.length === 0 ? (
-          <p className="text-gray-400">You haven&apos;t added any products yet.</p>
-        ) : (
-          <ul className="flex flex-col gap-3">
-            {products.map((p) => (
-              <li
-                key={p.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded border border-gray-700 p-3"
-              >
-                <div className="flex items-center gap-3">
-                  {p.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={p.image_url}
-                      alt={p.name}
-                      className={`h-16 w-16 rounded object-cover ${
-                        p.is_active ? "" : "opacity-50"
-                      }`}
-                    />
-                  ) : (
-                    <div className="flex h-16 w-16 items-center justify-center rounded bg-gray-800 text-xs text-gray-500">
-                      No photo
-                    </div>
-                  )}
-                  <div>
-                    <p className="flex flex-wrap items-center gap-2 font-semibold">
-                      {p.name}
-                      {!p.is_active && (
-                        <span className="rounded bg-gray-700 px-2 py-0.5 text-xs uppercase text-gray-200">
-                          Hidden
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-sm text-gray-400">
-                      ₦{Number(p.price_per_unit).toLocaleString("en-NG")} per {p.unit} ·{" "}
-                      {p.quantity_available} {p.unit} available · min order{" "}
-                      {p.min_order_quantity}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <Link
-                    href={`/dashboard/farmer/products/${p.id}/edit`}
-                    className="rounded border border-gray-600 px-3 py-1 text-sm"
+        <div className="flex flex-col gap-8">
+          <section>
+            <h2 className="mb-3 text-xl font-semibold">
+              Your listings ({products.length})
+            </h2>
+            {products.length === 0 ? (
+              <p className="text-white/60">
+                You haven&apos;t added any products yet.
+              </p>
+            ) : (
+              <ul className="flex flex-col gap-3">
+                {products.map((p) => (
+                  <li
+                    key={p.id}
+                    className={`${card} flex flex-wrap items-center justify-between gap-3`}
                   >
-                    Edit
-                  </Link>
+                    <div className="flex items-center gap-3">
+                      {p.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={p.image_url}
+                          alt={p.name}
+                          className={`h-16 w-16 rounded-xl object-cover ${
+                            p.is_active ? "" : "opacity-50"
+                          }`}
+                        />
+                      ) : (
+                        <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-white/10 text-xs text-white/40">
+                          No photo
+                        </div>
+                      )}
+                      <div>
+                        <p className="flex flex-wrap items-center gap-2 font-semibold">
+                          {p.name}
+                          {!p.is_active && (
+                            <span className={`${badge} bg-white/15 text-white/80`}>
+                              Hidden
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-sm text-white/60">
+                          ₦{Number(p.price_per_unit).toLocaleString("en-NG")} per{" "}
+                          {p.unit} · {p.quantity_available} {p.unit} available ·
+                          min order {p.min_order_quantity}
+                        </p>
+                      </div>
+                    </div>
 
-                  <form action={setProductActive}>
-                    <input type="hidden" name="id" value={p.id} />
-                    <input
-                      type="hidden"
-                      name="active"
-                      value={p.is_active ? "false" : "true"}
-                    />
-                    <button className="rounded border border-gray-600 px-3 py-1 text-sm">
-                      {p.is_active ? "Hide" : "Show"}
-                    </button>
-                  </form>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link
+                        href={`/dashboard/farmer/products/${p.id}/edit`}
+                        className={smallButton}
+                      >
+                        Edit
+                      </Link>
 
-                  <form action={deleteProduct}>
-                    <input type="hidden" name="id" value={p.id} />
-                    <button className="rounded border border-red-500 px-3 py-1 text-sm text-red-500">
-                      Delete
-                    </button>
-                  </form>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                      <form action={setProductActive}>
+                        <input type="hidden" name="id" value={p.id} />
+                        <input
+                          type="hidden"
+                          name="active"
+                          value={p.is_active ? "false" : "true"}
+                        />
+                        <button className={smallButton}>
+                          {p.is_active ? "Hide" : "Show"}
+                        </button>
+                      </form>
 
-      <Suspense fallback={<p>Loading orders...</p>}>
-        <FarmerOrders />
-      </Suspense>
+                      <form action={deleteProduct}>
+                        <input type="hidden" name="id" value={p.id} />
+                        <button className={dangerButton}>Delete</button>
+                      </form>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
 
-      <Suspense fallback={<p>Loading payments...</p>}>
-        <FarmerPayouts />
-      </Suspense>
+          <Suspense fallback={<p className="text-white/60">Loading orders...</p>}>
+            <FarmerOrders />
+          </Suspense>
+
+          <Suspense
+            fallback={<p className="text-white/60">Loading payments...</p>}
+          >
+            <FarmerPayouts />
+          </Suspense>
+        </div>
+      </div>
     </div>
   );
 }
@@ -188,9 +203,8 @@ export default function Page({
   searchParams: Promise<Params>;
 }) {
   return (
-    <main className="p-6">
-      <h1 className="text-2xl font-bold">Farmer dashboard</h1>
-      <Suspense fallback={<p>Loading...</p>}>
+    <main className={`${container} py-8`}>
+      <Suspense fallback={<p className="text-white/60">Loading...</p>}>
         <FarmerContent searchParams={searchParams} />
       </Suspense>
     </main>

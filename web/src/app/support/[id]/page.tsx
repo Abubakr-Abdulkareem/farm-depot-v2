@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { orderCode } from "@/lib/order-code";
 import { dateTime } from "@/lib/time";
+import { badge, container, smallButton } from "@/lib/layout";
 import ReplyForm from "@/components/ReplyForm";
 import AutoRefresh from "@/components/AutoRefresh";
 import { closeThread } from "@/app/support/actions";
@@ -65,53 +66,51 @@ async function ThreadContent({ params }: { params: Promise<{ id: string }> }) {
     : "User";
 
   return (
-    <div>
+    <div className="max-w-3xl">
       <AutoRefresh seconds={10} />
 
       <Link
         href={isAdmin ? "/admin/support" : "/support"}
-        className="mb-4 inline-block text-sm text-gray-400 underline"
+        className="mb-6 inline-block text-sm text-white/60 transition hover:text-white"
       >
         ← Back to {isAdmin ? "the inbox" : "support"}
       </Link>
 
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">{thread.subject}</h1>
+          <h1 className="text-2xl font-bold sm:text-3xl">{thread.subject}</h1>
           {isAdmin && owner && (
-            <p className="text-sm text-gray-400">
+            <p className="mt-1 text-sm text-white/60">
               {ownerName} ({owner.role}) · Phone: {owner.phone ?? "not added"}
             </p>
           )}
           {thread.order_id && (
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-white/60">
               About order #{orderCode(thread.order_id)}
             </p>
           )}
         </div>
-        <span className="rounded bg-gray-800 px-2 py-0.5 text-xs uppercase text-gray-300">
+        <span className={`${badge} bg-white/10 text-white/70`}>
           {thread.status}
         </span>
       </div>
 
       <ul className="mt-6 flex flex-col gap-3">
         {messages.map((m) => {
-          const mine = isAdmin ? m.sender_role === "admin" : m.sender_role === "user";
-          const label = mine
-            ? "You"
-            : isAdmin
-            ? ownerName
-            : "Farm Depot";
+          const mine = isAdmin
+            ? m.sender_role === "admin"
+            : m.sender_role === "user";
+          const label = mine ? "You" : isAdmin ? ownerName : "Farm Depot";
           return (
             <li
               key={m.id}
-              className={`max-w-[85%] rounded p-3 text-sm ${
+              className={`max-w-[85%] rounded-2xl p-4 text-sm ${
                 mine
-                  ? "self-end bg-green-900 text-green-50"
-                  : "self-start bg-gray-800"
+                  ? "self-end border border-lime-300/30 bg-lime-300/10"
+                  : "self-start border border-white/10 bg-white/10"
               }`}
             >
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-white/50">
                 {label} · {dateTime(m.created_at)}
               </p>
               <p className="mt-1 whitespace-pre-wrap">{m.body}</p>
@@ -121,7 +120,7 @@ async function ThreadContent({ params }: { params: Promise<{ id: string }> }) {
       </ul>
 
       {thread.status === "closed" && (
-        <p className="mt-4 text-sm text-gray-400">
+        <p className="mt-4 text-sm text-white/60">
           This conversation is closed. Send a message to reopen it.
         </p>
       )}
@@ -131,9 +130,7 @@ async function ThreadContent({ params }: { params: Promise<{ id: string }> }) {
       {thread.status === "open" && (
         <form action={closeThread} className="mt-4">
           <input type="hidden" name="thread_id" value={thread.id} />
-          <button className="rounded border border-gray-600 px-3 py-1 text-sm text-gray-300">
-            Close conversation
-          </button>
+          <button className={smallButton}>Close conversation</button>
         </form>
       )}
     </div>
@@ -142,8 +139,8 @@ async function ThreadContent({ params }: { params: Promise<{ id: string }> }) {
 
 export default function Page({ params }: { params: Promise<{ id: string }> }) {
   return (
-    <main className="mx-auto max-w-2xl p-6">
-      <Suspense fallback={<p>Loading...</p>}>
+    <main className={`${container} py-8`}>
+      <Suspense fallback={<p className="text-white/60">Loading...</p>}>
         <ThreadContent params={params} />
       </Suspense>
     </main>

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { orderCode } from "@/lib/order-code";
 import { dateTime } from "@/lib/time";
 import { formatDate } from "@/lib/format";
+import { badge, card, container, eyebrow } from "@/lib/layout";
 import NewThreadForm, { type OrderOption } from "@/components/NewThreadForm";
 
 type Thread = {
@@ -61,7 +62,7 @@ async function SupportContent() {
   }
 
   return (
-    <div className="mt-4 flex flex-col gap-8">
+    <div className="grid items-start gap-8 lg:grid-cols-2">
       <NewThreadForm orders={orderOptions} />
 
       <section>
@@ -69,7 +70,7 @@ async function SupportContent() {
           Your conversations ({threads.length})
         </h2>
         {threads.length === 0 ? (
-          <p className="text-gray-400">You haven&apos;t contacted us yet.</p>
+          <p className="text-white/60">You haven&apos;t contacted us yet.</p>
         ) : (
           <ul className="flex flex-col gap-3">
             {threads.map((t) => {
@@ -79,21 +80,21 @@ async function SupportContent() {
                 <li key={t.id}>
                   <Link
                     href={`/support/${t.id}`}
-                    className="block rounded border border-gray-700 p-3 hover:border-green-600"
+                    className={`${card} block transition hover:border-lime-300/60`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-semibold">{t.subject}</p>
                       {newReply ? (
-                        <span className="rounded bg-green-900 px-2 py-0.5 text-xs uppercase text-green-300">
+                        <span className={`${badge} bg-lime-300 text-black`}>
                           New reply
                         </span>
                       ) : (
-                        <span className="rounded bg-gray-800 px-2 py-0.5 text-xs uppercase text-gray-300">
+                        <span className={`${badge} bg-white/10 text-white/70`}>
                           {t.status}
                         </span>
                       )}
                     </div>
-                    <p className="mt-1 text-sm text-gray-400">
+                    <p className="mt-1 text-sm text-white/60">
                       {t.order_id ? `Order #${orderCode(t.order_id)} · ` : ""}
                       Last message {dateTime(t.last_message_at)}
                     </p>
@@ -110,9 +111,12 @@ async function SupportContent() {
 
 export default function Page() {
   return (
-    <main className="mx-auto max-w-3xl p-6">
-      <h1 className="text-2xl font-bold">Support</h1>
-      <Suspense fallback={<p>Loading...</p>}>
+    <main className={`${container} py-8`}>
+      <p className={eyebrow}>Support</p>
+      <h1 className="mt-2 mb-8 text-3xl font-bold sm:text-4xl">
+        How can we help?
+      </h1>
+      <Suspense fallback={<p className="text-white/60">Loading...</p>}>
         <SupportContent />
       </Suspense>
     </main>

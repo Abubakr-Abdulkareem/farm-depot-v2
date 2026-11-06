@@ -6,10 +6,19 @@ import { createProduct, updateProduct } from "@/app/dashboard/farmer/actions";
 import { createClient } from "@/lib/supabase/client";
 import { NIGERIAN_STATES } from "@/lib/states";
 import { CATEGORIES, UNITS } from "@/lib/product-input";
+import {
+  card,
+  field,
+  ghostButton,
+  noticeBad,
+  noticeGood,
+  primaryButton,
+  smallButton,
+} from "@/lib/layout";
 import type { FormState, Product } from "@/types";
 
 const initialState: FormState = {};
-const input = "rounded border border-gray-600 bg-transparent p-2 w-full";
+const input = `${field} w-full`;
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -87,7 +96,7 @@ export default function ProductForm({ product }: { product?: Product }) {
   }
 
   return (
-    <form action={formAction} className="flex max-w-xl flex-col gap-3">
+    <form action={formAction} className={`${card} flex flex-col gap-3`}>
       <h2 className="text-xl font-semibold">
         {editing ? "Edit product" : "Add a product"}
       </h2>
@@ -136,7 +145,7 @@ export default function ProductForm({ product }: { product?: Product }) {
           Spoils fast (tomatoes, leafy vegetables, fresh fish, eggs)
         </option>
       </select>
-      <p className="-mt-2 text-xs text-gray-400">
+      <p className="-mt-2 text-xs text-white/50">
         Fast-spoiling produce can only be delivered on short routes.
       </p>
 
@@ -148,7 +157,7 @@ export default function ProductForm({ product }: { product?: Product }) {
         rows={3}
       />
 
-      <div className="flex gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <input
           name="price_per_unit"
           type="number"
@@ -172,7 +181,7 @@ export default function ProductForm({ product }: { product?: Product }) {
         </select>
       </div>
 
-      <div className="flex gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <input
           name="quantity_available"
           type="number"
@@ -219,29 +228,29 @@ export default function ProductForm({ product }: { product?: Product }) {
       />
 
       <div className="flex flex-col gap-2">
-        <label className="text-sm text-gray-400">
+        <label className="text-sm text-white/60">
           Product photo (optional, JPG/PNG/WebP, max 5 MB)
         </label>
         <input
           type="file"
           accept="image/jpeg,image/png,image/webp"
           onChange={handleFile}
-          className="text-sm"
+          className="text-sm text-white/70 file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-1.5 file:text-sm file:text-white"
         />
-        {uploading && <p className="text-sm text-gray-400">Uploading photo...</p>}
-        {imageError && <p className="text-sm text-red-500">{imageError}</p>}
+        {uploading && <p className="text-sm text-white/60">Uploading photo...</p>}
+        {imageError && <p className="text-sm text-red-300">{imageError}</p>}
         {imageUrl && (
           <div className="flex items-end gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={imageUrl}
               alt="Product preview"
-              className="h-40 w-40 rounded object-cover"
+              className="h-40 w-40 rounded-xl object-cover"
             />
             <button
               type="button"
               onClick={() => setImageUrl("")}
-              className="rounded border border-gray-600 px-3 py-1 text-sm"
+              className={smallButton}
             >
               Remove photo
             </button>
@@ -250,16 +259,16 @@ export default function ProductForm({ product }: { product?: Product }) {
         <input type="hidden" name="image_url" value={imageUrl} />
       </div>
 
-      {state.error && <p className="text-red-500">{state.error}</p>}
+      {state.error && <p className={noticeBad}>{state.error}</p>}
       {state.success && !editing && (
-        <p className="text-green-500">Product added.</p>
+        <p className={noticeGood}>Product added.</p>
       )}
 
       <div className="flex items-center gap-3">
         <button
           type="submit"
           disabled={pending || uploading}
-          className="rounded bg-green-600 px-4 py-2 font-semibold text-white disabled:opacity-50"
+          className={primaryButton}
         >
           {pending
             ? "Saving..."
@@ -270,10 +279,7 @@ export default function ProductForm({ product }: { product?: Product }) {
             : "Add product"}
         </button>
         {editing && (
-          <Link
-            href="/dashboard/farmer"
-            className="rounded border border-gray-600 px-4 py-2 text-sm"
-          >
+          <Link href="/dashboard/farmer" className={ghostButton}>
             Cancel
           </Link>
         )}

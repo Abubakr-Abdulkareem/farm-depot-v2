@@ -4,10 +4,11 @@ import { useActionState, useState } from "react";
 import { openDispute } from "@/app/dashboard/buyer/actions";
 import { createClient } from "@/lib/supabase/client";
 import { DISPUTE_REASONS } from "@/lib/disputes";
+import { field, ghostButton, noticeBad } from "@/lib/layout";
 import type { FormState } from "@/types";
 
 const initialState: FormState = {};
-const field = "w-full rounded border border-gray-600 bg-transparent p-2 text-sm";
+const input = `${field} w-full`;
 
 const MAX_PHOTOS = 3;
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -85,7 +86,7 @@ export default function DisputeForm({ orderId }: { orderId: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mt-2 rounded border border-red-500 px-4 py-2 text-sm font-semibold text-red-400"
+        className="mt-2 rounded-full border border-red-400/60 px-5 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-950/50"
       >
         Report a problem
       </button>
@@ -95,10 +96,10 @@ export default function DisputeForm({ orderId }: { orderId: string }) {
   return (
     <form
       action={formAction}
-      className="mt-3 flex flex-col gap-3 rounded border border-red-800 p-3"
+      className="mt-3 flex flex-col gap-3 rounded-2xl border border-red-500/40 bg-red-950/20 p-4"
     >
-      <p className="font-semibold text-red-300">Report a problem</p>
-      <p className="text-xs text-gray-400">
+      <p className="font-semibold text-red-200">Report a problem</p>
+      <p className="text-xs text-white/60">
         You have 48 hours after delivery. Don&apos;t tap &quot;I received my
         goods&quot; if something is wrong.
       </p>
@@ -106,7 +107,7 @@ export default function DisputeForm({ orderId }: { orderId: string }) {
       <input type="hidden" name="order_id" value={orderId} />
       <input type="hidden" name="photo_paths" value={JSON.stringify(paths)} />
 
-      <select name="reason" defaultValue="" className={field} required>
+      <select name="reason" defaultValue="" className={input} required>
         <option value="" className="text-black">
           What went wrong?
         </option>
@@ -121,14 +122,14 @@ export default function DisputeForm({ orderId }: { orderId: string }) {
         name="details"
         rows={4}
         placeholder="Describe what happened (at least 10 characters)"
-        className={field}
+        className={input}
         minLength={10}
         maxLength={1000}
         required
       />
 
       <div>
-        <label className="text-sm text-gray-400">
+        <label className="text-sm text-white/60">
           Photos (optional, up to {MAX_PHOTOS}, JPG/PNG/WebP, max 5 MB each)
         </label>
         <input
@@ -137,31 +138,31 @@ export default function DisputeForm({ orderId }: { orderId: string }) {
           multiple
           onChange={handleFiles}
           disabled={uploading || paths.length >= MAX_PHOTOS}
-          className="mt-1 block text-sm"
+          className="mt-1 block text-sm text-white/70 file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-1.5 file:text-sm file:text-white"
         />
-        {uploading && <p className="text-sm text-gray-400">Uploading...</p>}
-        {photoError && <p className="text-sm text-red-500">{photoError}</p>}
+        {uploading && <p className="text-sm text-white/60">Uploading...</p>}
+        {photoError && <p className="text-sm text-red-300">{photoError}</p>}
         {paths.length > 0 && (
-          <p className="text-sm text-green-500">
+          <p className="text-sm text-lime-300">
             {paths.length} photo{paths.length === 1 ? "" : "s"} attached
           </p>
         )}
       </div>
 
-      {state.error && <p className="text-red-500">{state.error}</p>}
+      {state.error && <p className={noticeBad}>{state.error}</p>}
 
       <div className="flex gap-2">
         <button
           type="submit"
           disabled={pending || uploading}
-          className="rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          className="rounded-full bg-red-500 px-5 py-2 text-sm font-semibold text-white transition hover:bg-red-400 disabled:opacity-50"
         >
           {pending ? "Sending..." : "Submit report"}
         </button>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="rounded border border-gray-600 px-4 py-2 text-sm"
+          className={ghostButton}
         >
           Cancel
         </button>

@@ -5,6 +5,17 @@ import { createClient } from "@/lib/supabase/server";
 import { formatNaira, formatDate } from "@/lib/format";
 import LogoutButton from "@/components/LogoutButton";
 import DisputeForm from "@/components/DisputeForm";
+import {
+  badge,
+  card,
+  container,
+  eyebrow,
+  ghostButton,
+  noticeBad,
+  noticeGood,
+  noticeWarn,
+  primaryButton,
+} from "@/lib/layout";
 import { payForOrder, confirmReceipt } from "./actions";
 
 type OrderRow = {
@@ -89,67 +100,69 @@ async function BuyerContent({
   );
 
   return (
-    <div className="mt-4 flex flex-col gap-6">
-      <div className="flex items-center gap-4">
-        <p>Welcome, {profile.full_name}</p>
-        <LogoutButton />
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className={eyebrow}>Buyer dashboard</p>
+          <h1 className="mt-2 text-3xl font-bold sm:text-4xl">
+            Welcome, {profile.full_name}
+          </h1>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link href="/marketplace" className={ghostButton}>
+            Browse the marketplace
+          </Link>
+          <LogoutButton />
+        </div>
       </div>
 
       {payment === "success" && (
-        <p className="rounded border border-green-600 p-3 text-green-500">
-          Payment received. Thank you!
-        </p>
+        <p className={noticeGood}>Payment received. Thank you!</p>
       )}
       {payment === "duplicate" && (
-        <p className="rounded border border-yellow-600 p-3 text-yellow-500">
+        <p className={noticeWarn}>
           This order was already paid, so this extra payment will need to be
           refunded.
         </p>
       )}
       {(payment === "failed" || payment === "error") && (
-        <p className="rounded border border-red-600 p-3 text-red-500">
+        <p className={noticeBad}>
           Payment was not completed. You can try again below.
         </p>
       )}
       {receipt === "done" && (
-        <p className="rounded border border-green-600 p-3 text-green-500">
-          Thanks for confirming. The order is complete.
-        </p>
+        <p className={noticeGood}>Thanks for confirming. The order is complete.</p>
       )}
       {receipt === "error" && (
-        <p className="rounded border border-red-600 p-3 text-red-500">
+        <p className={noticeBad}>
           We couldn&apos;t complete that order. Please try again.
         </p>
       )}
       {dispute === "opened" && (
-        <p className="rounded border border-yellow-600 p-3 text-yellow-500">
+        <p className={noticeWarn}>
           Your report has been sent. Farm Depot will review it.
         </p>
       )}
 
-      <Link href="/marketplace" className="text-green-500 underline">
-        Browse the marketplace
-      </Link>
-
       <section>
-        <h2 className="mb-3 text-xl font-semibold">
+        <h2 className="mb-4 text-xl font-semibold">
           Your orders ({orders.length})
         </h2>
         {orders.length === 0 ? (
-          <p className="text-gray-400">You haven&apos;t placed any orders yet.</p>
+          <p className="text-white/60">You haven&apos;t placed any orders yet.</p>
         ) : (
-          <ul className="flex flex-col gap-3">
+          <ul className="grid items-start gap-4 lg:grid-cols-2">
             {orders.map((o) => {
               const d = disputes.get(o.id);
               return (
-                <li key={o.id} className="rounded border border-gray-700 p-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-gray-400">
+                <li key={o.id} className={card}>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm text-white/60">
                       {formatDate(o.created_at)}
                     </p>
                     <span
-                      className={`rounded px-2 py-0.5 text-xs uppercase ${
-                        statusStyle[o.status] ?? "bg-gray-800"
+                      className={`${badge} ${
+                        statusStyle[o.status] ?? "bg-gray-800 text-gray-200"
                       }`}
                     >
                       {o.status.replace("_", " ")}
@@ -157,7 +170,7 @@ async function BuyerContent({
                   </div>
 
                   {o.order_items.map((item, i) => (
-                    <p key={i} className="mt-1">
+                    <p key={i} className="mt-2 font-medium">
                       {item.products?.name ?? "Product"}: {item.quantity}{" "}
                       {item.products?.unit ?? ""} ×{" "}
                       {formatNaira(item.unit_price)}
@@ -165,34 +178,34 @@ async function BuyerContent({
                   ))}
 
                   {o.delivery_address && (
-                    <p className="mt-2 text-sm text-gray-400">
+                    <p className="mt-2 text-sm text-white/60">
                       Delivering to: {o.delivery_address}
                       {o.delivery_state ? `, ${o.delivery_state}` : ""}
                     </p>
                   )}
 
-                  <div className="mt-2 text-sm">
+                  <div className="mt-3 space-y-1 border-t border-white/10 pt-3 text-sm">
                     {o.items_total !== null && (
                       <p className="flex justify-between">
-                        <span>Produce</span>
+                        <span className="text-white/70">Produce</span>
                         <span>{formatNaira(o.items_total)}</span>
                       </p>
                     )}
                     {o.delivery_fee !== null && Number(o.delivery_fee) > 0 && (
                       <p className="flex justify-between">
-                        <span>Delivery</span>
+                        <span className="text-white/70">Delivery</span>
                         <span>{formatNaira(o.delivery_fee)}</span>
                       </p>
                     )}
+                    <p className="flex justify-between text-base font-bold text-lime-300">
+                      <span>Total</span>
+                      <span>{formatNaira(o.total_amount)}</span>
+                    </p>
                   </div>
-
-                  <p className="mt-1 font-bold text-green-500">
-                    Total: {formatNaira(o.total_amount)}
-                  </p>
 
                   {["paid", "confirmed", "picked_up"].includes(o.status) &&
                     o.delivery_code && (
-                      <p className="mt-3 rounded border border-yellow-700 p-2 text-sm text-yellow-300">
+                      <p className={`${noticeWarn} mt-3 text-sm`}>
                         Delivery code:{" "}
                         <span className="font-mono text-lg font-bold">
                           {o.delivery_code}
@@ -204,7 +217,7 @@ async function BuyerContent({
                     )}
 
                   {d && (
-                    <p className="mt-3 rounded border border-gray-600 p-2 text-sm">
+                    <p className="mt-3 rounded-xl border border-white/15 p-3 text-sm">
                       {disputeOutcome(d)}
                     </p>
                   )}
@@ -212,25 +225,22 @@ async function BuyerContent({
                   {o.status === "pending" && (
                     <form action={payForOrder} className="mt-3">
                       <input type="hidden" name="order_id" value={o.id} />
-                      <button
-                        type="submit"
-                        className="rounded bg-green-600 px-4 py-2 font-semibold text-white"
-                      >
+                      <button type="submit" className={primaryButton}>
                         Pay now
                       </button>
                     </form>
                   )}
 
                   {o.status === "delivered" && (
-                    <div className="mt-3 rounded border border-green-700 p-3 text-sm">
+                    <div className="mt-3 rounded-xl border border-lime-300/30 p-3 text-sm">
                       <p>
                         Your goods were delivered. If everything is as expected,
                         confirm receipt to complete the order. If something is
                         wrong, report a problem instead.
                       </p>
-                      <form action={confirmReceipt} className="mt-2">
+                      <form action={confirmReceipt} className="mt-3">
                         <input type="hidden" name="order_id" value={o.id} />
-                        <button className="rounded bg-green-600 px-4 py-2 font-semibold text-white">
+                        <button className={`${primaryButton} py-2 text-sm`}>
                           I received my goods
                         </button>
                       </form>
@@ -253,9 +263,8 @@ export default function Page({
   searchParams: Promise<Params>;
 }) {
   return (
-    <main className="p-6">
-      <h1 className="text-2xl font-bold">Buyer dashboard</h1>
-      <Suspense fallback={<p>Loading...</p>}>
+    <main className={`${container} py-8`}>
+      <Suspense fallback={<p className="text-white/60">Loading...</p>}>
         <BuyerContent searchParams={searchParams} />
       </Suspense>
     </main>

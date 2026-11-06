@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { formatNaira, formatDate } from "@/lib/format";
+import { badge, card, noticeBad } from "@/lib/layout";
 
 type PayoutRow = {
   id: string;
@@ -41,8 +42,10 @@ export default async function FarmerPayouts() {
       <h2 className="mb-3 text-xl font-semibold">Your payments</h2>
 
       {debts.length > 0 && (
-        <div className="mb-4 rounded border border-red-700 p-3 text-sm text-red-300">
-          <p className="font-semibold">Amount to be deducted from your payments</p>
+        <div className={`${noticeBad} mb-4 text-sm`}>
+          <p className="font-semibold">
+            Amount to be deducted from your payments
+          </p>
           {debts.map((d) => (
             <p key={d.id}>
               {formatNaira(d.amount)} · {formatDate(d.created_at)} · after a
@@ -53,7 +56,7 @@ export default async function FarmerPayouts() {
       )}
 
       {payouts.length === 0 ? (
-        <p className="text-gray-400">
+        <p className="text-white/60">
           Payments appear here once Farm Depot collects your produce.
         </p>
       ) : (
@@ -61,23 +64,23 @@ export default async function FarmerPayouts() {
           {payouts.map((p) => (
             <li
               key={p.id}
-              className="flex items-center justify-between rounded border border-gray-700 p-3"
+              className={`${card} flex items-center justify-between gap-3`}
             >
               <div>
                 <p className="font-semibold">
                   {p.kind === "pickup" ? "Pickup payment" : "Final payment"}
                 </p>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-white/60">
                   Order #{p.order_id.replace(/-/g, "").slice(0, 8).toUpperCase()}{" "}
                   · {formatDate(p.created_at)}
                 </p>
               </div>
               <div className="text-right">
-                <p className="font-bold text-green-500">
+                <p className="font-bold text-lime-300">
                   {formatNaira(p.amount)}
                 </p>
                 <span
-                  className={`rounded px-2 py-0.5 text-xs uppercase ${
+                  className={`${badge} ${
                     p.status === "paid"
                       ? "bg-green-900 text-green-300"
                       : "bg-yellow-900 text-yellow-300"

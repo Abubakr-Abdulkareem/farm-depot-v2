@@ -2,6 +2,7 @@ import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { formatNaira, formatDate } from "@/lib/format";
 import { updateOrderStatus } from "@/app/dashboard/farmer/actions";
+import { badge, card, primaryButton } from "@/lib/layout";
 
 type FarmerOrderItem = {
   id: string;
@@ -53,31 +54,31 @@ export default async function FarmerOrders() {
         Incoming orders ({items.length})
       </h2>
       {items.length === 0 ? (
-        <p className="text-gray-400">No paid orders yet.</p>
+        <p className="text-white/60">No paid orders yet.</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {items.map((i) => (
-            <li key={i.id} className="rounded border border-gray-700 p-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-400">
+            <li key={i.id} className={card}>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-white/60">
                   Order #{i.order_code} · {formatDate(i.created_at)}
                 </p>
                 <span
-                  className={`rounded px-2 py-0.5 text-xs uppercase ${
-                    statusStyle[i.status] ?? "bg-gray-800"
+                  className={`${badge} ${
+                    statusStyle[i.status] ?? "bg-gray-800 text-gray-200"
                   }`}
                 >
                   {i.status.replace("_", " ")}
                 </span>
               </div>
-              <p className="mt-1 font-semibold">
+              <p className="mt-2 font-semibold">
                 {i.product_name}: {i.quantity} {i.unit}
               </p>
-              <p className="mt-1 font-bold text-green-500">
+              <p className="mt-1 font-bold text-lime-300">
                 {formatNaira(i.line_total)}
               </p>
               {statusNote[i.status] && (
-                <p className="mt-1 text-sm text-gray-400">
+                <p className="mt-1 text-sm text-white/60">
                   {statusNote[i.status]}
                 </p>
               )}
@@ -86,7 +87,7 @@ export default async function FarmerOrders() {
                 <form action={updateOrderStatus} className="mt-3">
                   <input type="hidden" name="order_id" value={i.order_id} />
                   <input type="hidden" name="status" value="confirmed" />
-                  <button className="rounded bg-blue-600 px-4 py-2 font-semibold text-white">
+                  <button className={`${primaryButton} py-2 text-sm`}>
                     Confirm order
                   </button>
                 </form>

@@ -2,10 +2,17 @@
 
 import { useActionState } from "react";
 import { saveProfileDetails } from "@/app/dashboard/farmer/actions";
+import {
+  card,
+  field,
+  noticeBad,
+  noticeGood,
+  primaryButton,
+} from "@/lib/layout";
 import type { FormState } from "@/types";
 
 const initialState: FormState = {};
-const input = "rounded border border-gray-600 bg-transparent p-2 w-full";
+const input = `${field} w-full`;
 
 export default function PickupDetailsForm({
   phone,
@@ -22,9 +29,9 @@ export default function PickupDetailsForm({
   );
 
   return (
-    <form action={formAction} className="flex max-w-xl flex-col gap-3">
+    <form action={formAction} className={`${card} flex flex-col gap-3`}>
       <h2 className="text-xl font-semibold">Your pickup details</h2>
-      <p className="text-sm text-gray-400">
+      <p className="text-sm text-white/60">
         Private. Only Farm Depot staff and our driver see this, never buyers.
       </p>
 
@@ -51,14 +58,10 @@ export default function PickupDetailsForm({
         required
       />
 
-      {state.error && <p className="text-red-500">{state.error}</p>}
-      {state.success && <p className="text-green-500">Saved.</p>}
+      {state.error && <p className={noticeBad}>{state.error}</p>}
+      {state.success && <p className={noticeGood}>Saved.</p>}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded bg-green-600 p-2 font-semibold text-white disabled:opacity-50"
-      >
+      <button type="submit" disabled={pending} className={primaryButton}>
         {pending ? "Saving..." : "Save pickup details"}
       </button>
     </form>
