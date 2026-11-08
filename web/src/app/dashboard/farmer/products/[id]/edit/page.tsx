@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/uuid";
-import { container } from "@/lib/layout";
 import ProductForm from "@/components/ProductForm";
 import type { Product } from "@/types";
 
@@ -33,16 +32,16 @@ async function EditContent({ params }: { params: Promise<{ id: string }> }) {
 
 export default function Page({ params }: { params: Promise<{ id: string }> }) {
   return (
-    <main className={`${container} py-8`}>
+    <div>
       <Link
-        href="/dashboard/farmer"
+        href="/dashboard/farmer/listings"
         className="mb-6 inline-block text-sm text-white/60 transition hover:text-white"
       >
-        ← Back to your dashboard
+        ← Back to your listings
       </Link>
       <Suspense fallback={<p className="text-white/60">Loading...</p>}>
         <EditContent params={params} />
       </Suspense>
-    </main>
+    </div>
   );
 }

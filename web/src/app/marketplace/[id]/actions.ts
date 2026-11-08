@@ -36,6 +36,6 @@ export async function placeOrder(
 
   if (error) return { error: error.message };
 
-  revalidatePath("/dashboard/buyer");
-  redirect("/dashboard/buyer");
+  revalidatePath("/dashboard/buyer", "layout");
+  redirect("/dashboard/buyer/orders");
 }

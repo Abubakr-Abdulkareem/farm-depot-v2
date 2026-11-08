@@ -13,6 +13,8 @@ import { isDisputeReason } from "@/lib/disputes";
 import { notifyDisputeOpened } from "@/lib/notify";
 import type { FormState } from "@/types";
 
+const ORDERS = "/dashboard/buyer/orders";
+
 // The address the buyer is using right now (localhost while testing, the live
 // domain in production), so Paystack always sends them back to the same place.
 async function currentSiteUrl() {
@@ -47,7 +49,7 @@ export async function payForOrder(formData: FormData) {
     .maybeSingle();
 
   if (!order || order.status !== "pending" || !user.email) {
-    redirect("/dashboard/buyer?payment=error");
+    redirect(`${ORDERS}?payment=error`);
   }
 
   const reference = `fd_${randomUUID()}`;
@@ -58,7 +60,7 @@ export async function payForOrder(formData: FormData) {
     amount_kobo: Math.round(Number(order.total_amount) * 100),
   });
 
-  if (error) redirect("/dashboard/buyer?payment=error");
+  if (error) redirect(`${ORDERS}?payment=error`);
 
   const siteUrl = await currentSiteUrl();
 
@@ -72,7 +74,7 @@ export async function payForOrder(formData: FormData) {
     });
     checkoutUrl = tx.authorization_url;
   } catch {
-    redirect("/dashboard/buyer?payment=error");
+    redirect(`${ORDERS}?payment=error`);
   }
 
   redirect(checkoutUrl);
@@ -81,19 +83,19 @@ export async function payForOrder(formData: FormData) {
 export async function confirmReceipt(formData: FormData) {
   await requireRole(["buyer"]);
   const orderId = String(formData.get("order_id") ?? "");
-  if (!orderId) redirect("/dashboard/buyer");
+  if (!orderId) redirect(ORDERS);
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("complete_order", {
     p_order_id: orderId,
   });
 
-  revalidatePath("/dashboard/buyer");
-  revalidatePath("/dashboard/farmer");
-  revalidatePath("/admin");
+  revalidatePath("/dashboard/buyer", "layout");
+  revalidatePath("/dashboard/farmer", "layout");
+  revalidatePath("/admin", "layout");
 
-  if (error) redirect("/dashboard/buyer?receipt=error");
-  redirect("/dashboard/buyer?receipt=done");
+  if (error) redirect(`${ORDERS}?receipt=error`);
+  redirect(`${ORDERS}?receipt=done`);
 }
 
 export async function openDispute(
@@ -139,8 +141,8 @@ export async function openDispute(
 
   after(() => notifyDisputeOpened(orderId));
 
-  revalidatePath("/dashboard/buyer");
-  revalidatePath("/dashboard/farmer");
-  revalidatePath("/admin");
-  redirect("/dashboard/buyer?dispute=opened");
+  revalidatePath("/dashboard/buyer", "layout");
+  revalidatePath("/dashboard/farmer", "layout");
+  revalidatePath("/admin", "layout");
+  redirect(`${ORDERS}?dispute=opened`);
 }

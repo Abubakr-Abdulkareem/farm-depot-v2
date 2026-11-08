@@ -1,14 +1,16 @@
 "use server";
 
-import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { parseProductForm } from "@/lib/product-input";
 import { isUuid } from "@/lib/uuid";
 import { notifyOrderConfirmed } from "@/lib/notify";
 import type { FormState } from "@/types";
+
+const LISTINGS = "/dashboard/farmer/listings";
 
 async function removeImage(imageUrl: string | null | undefined) {
   if (!imageUrl) return;
@@ -22,9 +24,10 @@ async function removeImage(imageUrl: string | null | undefined) {
     .remove([imageUrl.slice(idx + marker.length)]);
 }
 
-function refreshProductPages() {
-  revalidatePath("/dashboard/farmer");
+function refreshFarmerPages() {
+  revalidatePath("/dashboard/farmer", "layout");
   revalidatePath("/marketplace");
+  revalidatePath("/");
 }
 
 export async function createProduct(
@@ -44,8 +47,8 @@ export async function createProduct(
 
   if (error) return { error: error.message };
 
-  refreshProductPages();
-  return { success: true };
+  refreshFarmerPages();
+  redirect(`${LISTINGS}?notice=created`);
 }
 
 export async function updateProduct(
@@ -83,9 +86,9 @@ export async function updateProduct(
     await removeImage(existing.image_url);
   }
 
-  refreshProductPages();
+  refreshFarmerPages();
   revalidatePath(`/marketplace/${productId}`);
-  redirect("/dashboard/farmer?notice=updated");
+  redirect(`${LISTINGS}?notice=updated`);
 }
 
 export async function setProductActive(formData: FormData) {
@@ -93,7 +96,7 @@ export async function setProductActive(formData: FormData) {
 
   const id = String(formData.get("id") ?? "");
   const active = String(formData.get("active") ?? "") === "true";
-  if (!isUuid(id)) redirect("/dashboard/farmer");
+  if (!isUuid(id)) redirect(LISTINGS);
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -102,18 +105,18 @@ export async function setProductActive(formData: FormData) {
     .eq("id", id)
     .eq("farmer_id", user.id);
 
-  refreshProductPages();
+  refreshFarmerPages();
   revalidatePath(`/marketplace/${id}`);
 
-  if (error) redirect("/dashboard/farmer?notice=update_failed");
-  redirect(`/dashboard/farmer?notice=${active ? "shown" : "hidden"}`);
+  if (error) redirect(`${LISTINGS}?notice=update_failed`);
+  redirect(`${LISTINGS}?notice=${active ? "shown" : "hidden"}`);
 }
 
 export async function deleteProduct(formData: FormData) {
   const { user } = await requireRole(["farmer"]);
 
   const id = String(formData.get("id") ?? "");
-  if (!isUuid(id)) redirect("/dashboard/farmer");
+  if (!isUuid(id)) redirect(LISTINGS);
 
   const supabase = await createClient();
 
@@ -133,7 +136,7 @@ export async function deleteProduct(formData: FormData) {
   if (error) {
     // 23503 = the product is referenced by existing orders
     redirect(
-      `/dashboard/farmer?notice=${
+      `${LISTINGS}?notice=${
         error.code === "23503" ? "has_orders" : "delete_failed"
       }`
     );
@@ -141,8 +144,8 @@ export async function deleteProduct(formData: FormData) {
 
   await removeImage(product?.image_url);
 
-  refreshProductPages();
-  redirect("/dashboard/farmer?notice=deleted");
+  refreshFarmerPages();
+  redirect(`${LISTINGS}?notice=deleted`);
 }
 
 export async function updateOrderStatus(formData: FormData) {
@@ -164,9 +167,9 @@ export async function updateOrderStatus(formData: FormData) {
     after(() => notifyOrderConfirmed(orderId));
   }
 
-  revalidatePath("/dashboard/farmer");
-  revalidatePath("/dashboard/buyer");
-  revalidatePath("/admin");
+  revalidatePath("/dashboard/farmer", "layout");
+  revalidatePath("/dashboard/buyer", "layout");
+  revalidatePath("/admin", "layout");
 }
 
 export async function saveProfileDetails(
@@ -198,7 +201,7 @@ export async function saveProfileDetails(
 
   if (error) return { error: error.message };
 
-  revalidatePath("/dashboard/farmer");
-  revalidatePath("/admin");
+  revalidatePath("/dashboard/farmer", "layout");
+  revalidatePath("/admin", "layout");
   return { success: true };
 }

@@ -11,7 +11,6 @@ import {
   field,
   ghostButton,
   noticeBad,
-  noticeGood,
   primaryButton,
   smallButton,
 } from "@/lib/layout";
@@ -31,13 +30,10 @@ export default function ProductForm({ product }: { product?: Product }) {
   const [imageError, setImageError] = useState<string | null>(null);
 
   const [state, formAction, pending] = useActionState(
-    async (prev: FormState, formData: FormData) => {
-      const result = product
-        ? await updateProduct(prev, formData)
-        : await createProduct(prev, formData);
-      if (result.success && !product) setImageUrl("");
-      return result;
-    },
+    async (prev: FormState, formData: FormData) =>
+      product
+        ? updateProduct(prev, formData)
+        : createProduct(prev, formData),
     initialState
   );
 
@@ -260,9 +256,6 @@ export default function ProductForm({ product }: { product?: Product }) {
       </div>
 
       {state.error && <p className={noticeBad}>{state.error}</p>}
-      {state.success && !editing && (
-        <p className={noticeGood}>Product added.</p>
-      )}
 
       <div className="flex items-center gap-3">
         <button
@@ -278,11 +271,9 @@ export default function ProductForm({ product }: { product?: Product }) {
             ? "Save changes"
             : "Add product"}
         </button>
-        {editing && (
-          <Link href="/dashboard/farmer" className={ghostButton}>
-            Cancel
-          </Link>
-        )}
+        <Link href="/dashboard/farmer/listings" className={ghostButton}>
+          Cancel
+        </Link>
       </div>
     </form>
   );

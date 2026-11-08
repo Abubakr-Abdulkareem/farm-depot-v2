@@ -7,7 +7,9 @@ export async function GET(request: Request) {
     url.searchParams.get("reference") ?? url.searchParams.get("trxref");
 
   if (!reference) {
-    return NextResponse.redirect(new URL("/dashboard/buyer?payment=error", url));
+    return NextResponse.redirect(
+      new URL("/dashboard/buyer/orders?payment=error", url)
+    );
   }
 
   const result = await confirmPayment(reference);
@@ -19,6 +21,6 @@ export async function GET(request: Request) {
     : "success";
 
   return NextResponse.redirect(
-    new URL(`/dashboard/buyer?payment=${outcome}`, url)
+    new URL(`/dashboard/buyer/orders?payment=${outcome}`, url)
   );
 }
