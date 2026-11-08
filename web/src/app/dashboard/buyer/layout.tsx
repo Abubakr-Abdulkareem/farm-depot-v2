@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import DashboardNav, { type NavItem } from "@/components/DashboardNav";
 import { container } from "@/lib/layout";
 
@@ -13,7 +14,9 @@ export default function BuyerLayout({
 }) {
   return (
     <main className={`${container} py-8`}>
-      <DashboardNav items={items} />
+      <Suspense fallback={<div className="mb-8 h-12 border-b border-white/10" />}>
+        <DashboardNav items={items} />
+      </Suspense>
       {children}
     </main>
   );
