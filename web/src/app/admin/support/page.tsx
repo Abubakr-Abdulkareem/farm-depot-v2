@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { orderCode } from "@/lib/order-code";
 import { dateTime } from "@/lib/time";
+import { card, eyebrow, pageTitle } from "@/lib/layout";
 import AutoRefresh from "@/components/AutoRefresh";
 
 type Thread = {
@@ -31,22 +32,22 @@ function ThreadList({
   people: Map<string, Person>;
 }) {
   return (
-    <ul className="flex flex-col gap-3">
+    <ul className="grid gap-3 lg:grid-cols-2">
       {threads.map((t) => {
         const p = people.get(t.user_id);
         return (
           <li key={t.id}>
             <Link
               href={`/support/${t.id}`}
-              className="block rounded border border-gray-700 p-3 hover:border-green-600"
+              className={`${card} block transition hover:border-lime-300/60`}
             >
               <div className="flex items-center justify-between gap-2">
                 <p className="font-semibold">{t.subject}</p>
-                <span className="text-xs uppercase text-gray-400">
+                <span className="text-xs text-white/50 uppercase">
                   {p?.role ?? ""}
                 </span>
               </div>
-              <p className="mt-1 text-sm text-gray-400">
+              <p className="mt-1 text-sm text-white/60">
                 {p ? p.business_name || p.full_name || "User" : "User"}
                 {t.order_id ? ` · Order #${orderCode(t.order_id)}` : ""} · Last
                 message {dateTime(t.last_message_at)}
@@ -65,7 +66,9 @@ async function InboxContent() {
 
   const { data } = await supabase
     .from("support_threads")
-    .select("id, user_id, order_id, subject, status, last_sender_role, last_message_at")
+    .select(
+      "id, user_id, order_id, subject, status, last_sender_role, last_message_at"
+    )
     .order("last_message_at", { ascending: false })
     .limit(200);
 
@@ -91,15 +94,15 @@ async function InboxContent() {
   const closed = threads.filter((t) => t.status === "closed");
 
   return (
-    <div className="mt-4 flex flex-col gap-8">
+    <div className="flex flex-col gap-8">
       <AutoRefresh seconds={15} />
 
       <section>
-        <h2 className="mb-3 text-xl font-semibold text-yellow-400">
+        <h2 className="mb-3 text-xl font-semibold text-yellow-300">
           Needs reply ({needsReply.length})
         </h2>
         {needsReply.length === 0 ? (
-          <p className="text-gray-400">You&apos;re all caught up.</p>
+          <p className="text-white/60">You&apos;re all caught up.</p>
         ) : (
           <ThreadList threads={needsReply} people={people} />
         )}
@@ -110,7 +113,7 @@ async function InboxContent() {
           Waiting for the user ({waiting.length})
         </h2>
         {waiting.length === 0 ? (
-          <p className="text-gray-400">Nothing waiting.</p>
+          <p className="text-white/60">Nothing waiting.</p>
         ) : (
           <ThreadList threads={waiting} people={people} />
         )}
@@ -119,7 +122,7 @@ async function InboxContent() {
       <section>
         <h2 className="mb-3 text-xl font-semibold">Closed ({closed.length})</h2>
         {closed.length === 0 ? (
-          <p className="text-gray-400">No closed conversations.</p>
+          <p className="text-white/60">No closed conversations.</p>
         ) : (
           <ThreadList threads={closed} people={people} />
         )}
@@ -130,14 +133,14 @@ async function InboxContent() {
 
 export default function Page() {
   return (
-    <main className="mx-auto max-w-3xl p-6">
-      <h1 className="text-2xl font-bold">Support inbox</h1>
-      <Link href="/admin" className="text-sm text-gray-400 underline">
-        ← Back to the admin panel
-      </Link>
-      <Suspense fallback={<p>Loading...</p>}>
+    <div className="flex flex-col gap-6">
+      <div>
+        <p className={eyebrow}>Support</p>
+        <h1 className={`mt-2 ${pageTitle}`}>Support inbox</h1>
+      </div>
+      <Suspense fallback={<p className="text-white/60">Loading...</p>}>
         <InboxContent />
       </Suspense>
-    </main>
+    </div>
   );
 }
