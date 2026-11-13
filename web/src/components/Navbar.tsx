@@ -2,6 +2,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import LogoutButton from "@/components/LogoutButton";
+import NotificationBell from "@/components/NotificationBell";
 import { container } from "@/lib/layout";
 
 const dashboardFor = {
@@ -21,7 +22,7 @@ export default async function Navbar() {
         <Link href="/" className="text-xl font-bold text-lime-300">
           Farm Depot
         </Link>
-        <div className="flex items-center gap-5 text-sm text-white/80">
+        <div className="flex items-center gap-4 text-sm text-white/80 sm:gap-5">
           <Link href="/marketplace" className="transition hover:text-white">
             Marketplace
           </Link>
@@ -44,6 +45,7 @@ export default async function Navbar() {
                   Support
                 </Link>
               )}
+              <NotificationBell />
               <LogoutButton />
             </>
           ) : (
